@@ -1,0 +1,15 @@
+{
+    "CockpitFOV":  48,
+    "SeatOffsetZ":  0,
+    "SeatOffsetY":  0,
+    "CreditsPerLevel":  0,
+    "CreditsPerKm":  1000,
+    "SkillPointsMultiplier":  1,
+    "SkillXPMultiplier":  1,
+    "MaxSkillMultiplier":  5,
+    "SkillChainSeconds":  0,
+    "FreeRoamTrafficPercent":  100,
+    "RaceTraffic":  true,
+    "RoadTripTraffic":  true,
+    "CrashesKeepSkillChain":  false
+}
