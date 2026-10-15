@@ -1,0 +1,22 @@
+# Pushing a v* tag zips the tool as "FH2 Mods\..." and publishes it as a GitHub release.
+name: release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build zip
+        run: |
+          mkdir "FH2 Mods"
+          cp "FH2 Mods.bat" "FH2 Mods.ps1" README.txt apply.ps1 car_power.py cars.json settings.json "FH2 Mods/"
+          cp LICENSE "FH2 Mods/LICENSE.txt"
+          zip -r "FH2-Cars-GamePlay-Mods-${GITHUB_REF_NAME}.zip" "FH2 Mods"
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" "FH2-Cars-GamePlay-Mods-${GITHUB_REF_NAME}.zip" --title "FH2 Cars & Gameplay Mods ${GITHUB_REF_NAME}" --notes "Extract the zip and put the **FH2 Mods** folder next to azimuth.exe. Requires Python 3 on PATH. See the README for setup."
