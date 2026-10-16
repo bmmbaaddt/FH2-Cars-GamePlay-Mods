@@ -7,6 +7,7 @@ Changes:
 - `features/world_keys.c`: Ctrl+key world shortcuts (time, weather, traffic, repair, snap to road) for the KeyboardShortcut components FH2 Mods adds to free roam.
 - `features/ghost_traffic.c`, `[Traffic] GhostCars`: every car except the player's has its car-to-car collision disabled.
 - `features/steering_wheel.c`, `[Cockpit] SteeringWheelLock`: experimental cockpit wheel angle scaling (default 0 = off; had no visible effect in testing).
+- `features/sky_road.c`: Ctrl+F lifts the player's car onto an endless flat floor (the engine's own infinite flat collision plane) 3000 m above the map; Ctrl+F again drops it back to the road. Experimental.
 - `patch_engine.c`: the photo mode sample density site is left as loaded when Azimuth 0.9.10 has already changed it, instead of refusing all patches.
 
 Build: see BUILD.md (`python build.py <zig> --azimuth --output out/azimuth-tls.dll`, Zig 0.15.2).

@@ -60,6 +60,9 @@ Cockpit        field of view and seat position
 Car mods       pick a car, set multipliers (x1 = stock). Grip and brakes act on the
                car's best road tires and best brakes, so fit those upgrades.
                Turbo only does something on a turbocharged engine.
+               Gearing (higher = taller gears, more top speed) and rev limit
+               also affect other cars that share the same swap part.
+               Multipliers go up to x100.
 
 Very high power on a car with stock tires and rear-wheel drive will mostly
 spin the wheels. Raise grip and brakes along with power.
@@ -89,6 +92,9 @@ World keys (free roam, tick "World keys" in the window):
   Ctrl+G   traffic off / on
   Ctrl+N   repair the car
   Ctrl+B   put the car back on the road
+  Ctrl+F   sky road: endless flat floor above the map, press again to
+           come back down. EXPERIMENTAL AND BUGGY: the car can get stuck.
+           For top speed runs, prefer low grip and low downforce instead.
 
 
 FILE OVERRIDES (optional)

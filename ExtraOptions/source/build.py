@@ -37,6 +37,7 @@ COMMON_SOURCES = [
     "features/world_keys.c",
     "features/steering_wheel.c",
     "features/ghost_traffic.c",
+    "features/sky_road.c",
     "features/roof_fade.c",
     "features/autodrive.c",
     "features/game_input.c",

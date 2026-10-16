@@ -6,9 +6,13 @@ $settingsPath = Join-Path $dir 'settings.json'
 $launcher = Join-Path (Split-Path $dir) 'azimuth.exe'   # this folder sits next to azimuth.exe
 $s = Get-Content $settingsPath -Raw | ConvertFrom-Json
 
-$form = New-Object Windows.Forms.Form -Property @{ Text = 'FH2 Mods'; StartPosition = 'CenterScreen'; FormBorderStyle = 'FixedDialog'; MaximizeBox = $false; AutoSize = $true; AutoSizeMode = 'GrowAndShrink'; Font = New-Object Drawing.Font('Segoe UI', 10) }
-$grid = New-Object Windows.Forms.TableLayoutPanel -Property @{ ColumnCount = 2; AutoSize = $true; Padding = 12; Dock = 'Fill' }
-$form.Controls.Add($grid)
+$form = New-Object Windows.Forms.Form -Property @{ Text = 'FH2 Mods'; StartPosition = 'CenterScreen'; FormBorderStyle = 'Sizable'; Font = New-Object Drawing.Font('Segoe UI', 10) }
+# the settings scroll, the status and buttons stay pinned at the bottom, so they show at any display scale
+$scroll = New-Object Windows.Forms.Panel -Property @{ Dock = 'Fill'; AutoScroll = $true }
+$grid = New-Object Windows.Forms.TableLayoutPanel -Property @{ ColumnCount = 2; AutoSize = $true; Padding = 12 }
+$scroll.Controls.Add($grid)
+$footer = New-Object Windows.Forms.TableLayoutPanel -Property @{ ColumnCount = 1; AutoSize = $true; Padding = '12,0,12,8'; Dock = 'Bottom' }
+$form.Controls.Add($scroll); $form.Controls.Add($footer)
 $inputs = @{}
 
 function Section($text) {
@@ -39,7 +43,7 @@ CheckRow 'SlideOffWalls' 'Slide along walls and barriers instead of stopping dea
 CheckRow 'LightBreakables' 'Breakables (fences, signs, bins...) weigh almost nothing, so they barely slow you'
 Section 'World keys  (free roam)'
 if ($null -eq $s.WorldControls) { $s | Add-Member WorldControls $false }   # settings.json from before this option
-CheckRow 'WorldControls' "Time: Ctrl+T midnight, Y sunrise, U midday, I sunset, P freeze clock`nWeather: Ctrl+W rain, R clear`nCtrl+G traffic off/on, N repair, B back on the road"
+CheckRow 'WorldControls' "Time: Ctrl+T midnight, Y sunrise, U midday, I sunset, P freeze clock`nWeather: Ctrl+W rain, R clear`nCtrl+G traffic off/on, N repair, B back on the road`nCtrl+F sky road (experimental, buggy)"
 Section 'Money'
 NumberRow 'CreditsPerLevel' 'CR per level-up' 0 999999999 0 1000000
 NumberRow 'CreditsPerKm' 'CR per km in races' 0 100000000 0 10000
@@ -67,12 +71,12 @@ $carBox = New-Object Windows.Forms.ComboBox -Property @{ Width = 260; AutoComple
 $carList | ForEach-Object { [void]$carBox.Items.Add($_.name) }   # item index = index in $carList
 function SelectedCar { if ($carBox.SelectedIndex -ge 0) { [int]$carList[$carBox.SelectedIndex].id } }
 $grid.Controls.Add($carBox)
-$carFields = [ordered]@{ power = 'Power  (x)'; drag = 'Air drag  (x, lower = faster)'; downforce = 'Downforce  (x)'; grip = 'Tire grip  (x)'; brakes = 'Brake strength  (x)'; turbo = 'Turbo boost  (x, turbo cars only)' }
+$carFields = [ordered]@{ power = 'Power  (x)'; drag = 'Air drag  (x, lower = faster)'; downforce = 'Downforce  (x)'; grip = 'Tire grip  (x)'; brakes = 'Brake strength  (x)'; turbo = 'Turbo boost  (x, turbo cars only)'; gearing = 'Gearing  (x, higher = taller gears, more top speed)'; redline = 'Rev limit  (x)' }
 $carInputs = @{}
 $loading = $false
 foreach ($k in $carFields.Keys) {
   $grid.Controls.Add((New-Object Windows.Forms.Label -Property @{ Text = $carFields[$k]; AutoSize = $true; Anchor = 'Left'; Margin = '0,6,12,0' }))
-  $n = New-Object Windows.Forms.NumericUpDown -Property @{ Minimum = 0.1; Maximum = 10; DecimalPlaces = 2; Increment = 0.1; Width = 160; Value = 1; Enabled = $false }
+  $n = New-Object Windows.Forms.NumericUpDown -Property @{ Minimum = 0.1; Maximum = 100; DecimalPlaces = 2; Increment = 0.1; Width = 160; Value = 1; Enabled = $false }
   $n.Add_ValueChanged({
     $id = SelectedCar
     if ($loading -or $null -eq $id) { return }
@@ -94,7 +98,7 @@ $carBox.Add_SelectedIndexChanged({
   if ($null -eq $id) { return }
   $m = $carMods[$id]
   $script:loading = $true
-  foreach ($f in $carFields.Keys) { $carInputs[$f].Enabled = $true; $carInputs[$f].Value = [decimal]$(if ($m) { $m[$f] } else { 1 }) }
+  foreach ($f in $carFields.Keys) { $carInputs[$f].Enabled = $true; $carInputs[$f].Value = [decimal]$(if ($m -and $null -ne $m[$f]) { $m[$f] } else { 1 }) }   # cars.json from before a field existed: x1
   $script:loading = $false
 })
 $resetCar = New-Object Windows.Forms.Button -Property @{ Text = 'Set this car back to stock'; AutoSize = $true }
@@ -107,10 +111,10 @@ $note = New-Object Windows.Forms.Label -Property @{ AutoSize = $true; MaximumSiz
 $grid.Controls.Add($note); $grid.SetColumnSpan($note, 2)
 
 $status = New-Object Windows.Forms.Label -Property @{ AutoSize = $true; MaximumSize = '520,0'; Margin = '0,6,0,0' }
-$grid.Controls.Add($status); $grid.SetColumnSpan($status, 2)
+$footer.Controls.Add($status)
 
 $buttons = New-Object Windows.Forms.FlowLayoutPanel -Property @{ AutoSize = $true; Margin = '0,10,0,0' }
-$grid.Controls.Add($buttons); $grid.SetColumnSpan($buttons, 2)
+$footer.Controls.Add($buttons)
 function Button($text, $action) { $b = New-Object Windows.Forms.Button -Property @{ Text = $text; AutoSize = $true; Padding = '8,2,8,2' }; $b.Add_Click($action); $buttons.Controls.Add($b) }
 
 function RunApply($extraArgs) {
@@ -138,4 +142,15 @@ Button 'Apply && Play' { Save; if (RunApply @()) {
   $form.Close() } }
 Button 'Restore originals' { [void](RunApply @('-Restore')) }
 
+$form.Add_Load({
+  # fit the content, but never beyond the screen; anything that doesn't fit scrolls
+  $area = [Windows.Forms.Screen]::FromControl($form).WorkingArea
+  $chrome = $form.Size - $form.ClientSize
+  $w = [Math]::Max($grid.PreferredSize.Width, $footer.PreferredSize.Width) + [Windows.Forms.SystemInformation]::VerticalScrollBarWidth
+  $h = $grid.PreferredSize.Height + $footer.PreferredSize.Height
+  $form.Size = New-Object Drawing.Size([Math]::Min($w + $chrome.Width, $area.Width), [Math]::Min($h + $chrome.Height, $area.Height))
+  $form.MinimumSize = New-Object Drawing.Size(300, ($footer.PreferredSize.Height + $chrome.Height + 80))
+  $form.Location = New-Object Drawing.Point(($area.X + ($area.Width - $form.Width) / 2), ($area.Y + ($area.Height - $form.Height) / 2))
+})
+$form.Add_Shown({ $scroll.AutoScrollPosition = New-Object Drawing.Point(0, 0) })   # focusing the first input scrolls it into view
 [void]$form.ShowDialog()

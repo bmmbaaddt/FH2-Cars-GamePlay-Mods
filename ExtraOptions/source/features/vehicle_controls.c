@@ -612,6 +612,7 @@ static void vehicle_update(void *self, float dt, float frame_dt, unsigned frame)
         int focused = autodrive_game_window_focused();
         keyboard_tick(local_car, focused);
         world_keys_tick(focused);
+        sky_road_car_tick(local_car);
         vehicle_controls_tick(local_car, focused);
         maintain_controls(self);
     }

@@ -16,7 +16,7 @@ A settings window for **Forza Horizon 2 (Xbox One)** running on **Azimuth**. Cha
 | Money | CR per level-up, CR per km driven in races |
 | Skills | Skill points and chain XP multipliers, highest chain multiplier, seconds allowed between skills, crashes not ending the skill chain |
 | Cockpit camera | Field of view and seat position |
-| Car mods | Pick any car and set power, air drag, downforce, tire grip, brakes and turbo boost (x1 = stock) |
+| Car mods | Pick any car and set power, air drag, downforce, tire grip, brakes, turbo boost, gearing and rev limit (x1 = stock, up to x100) |
 
 - **Restore originals** puts every game file back in one click, including the original ExtraOptions.
 - The original game files are backed up on first run, and every Apply rebuilds from them, so settings never stack up.
@@ -49,6 +49,9 @@ You can change these keys in `data\bin\FH2_ExtraOptions.ini`, section `[Keyboard
 | `Ctrl+G` | Traffic off / on |
 | `Ctrl+N` | Repair the car |
 | `Ctrl+B` | Put the car back on the road |
+| `Ctrl+F` | Sky road: lifts the car onto an endless flat floor high above the map; press again to come back down. **Experimental and buggy** |
+
+> **Sky road is buggy.** The car can get stuck or behave oddly up there. For top speed runs, keep **grip and downforce low** on the car rather than relying on the sky road.
 
 ## Requirements
 
@@ -75,6 +78,8 @@ Updating from an older version: replace the whole **FH2 Mods** folder (keep your
 
 - Raise grip and brakes along with power, or the car will mostly spin its wheels.
 - Grip and brakes act on the car's best road tires and best brakes, so fit those upgrades in game. Turbo only does something on a turbocharged engine.
+- Gearing (higher = taller gears, more top speed, slower pull) and rev limit change the fitted transmission and engine, so every car sharing that swap part gets them too.
+- For top speed runs, keep grip and downforce low rather than relying on the sky road.
 - Keep your total CR under about 2,000,000,000: the game may store it as a 32-bit number.
 - Ghost cars applies to race opponents too, not only free roam traffic.
 - Big solid scenery (trees, light poles, walls, bridges) stays solid; only breakable objects are made light.

@@ -65,7 +65,10 @@ static const PatchDefinition *const callback_patches[] = {&garage_hook_patch,
                                                           &steering_wheel_patches[0],
                                                           &steering_wheel_patches[1],
                                                           &ghost_traffic_patches[0],
-                                                          &ghost_traffic_patches[1]};
+                                                          &ghost_traffic_patches[1],
+                                                          &sky_road_hook_patches[0],
+                                                          &sky_road_hook_patches[1],
+                                                          &sky_road_hook_patches[2]};
 
 enum { ALL_PATCH_COUNT = FIXED_PATCH_COUNT + ARRAY_COUNT(callback_patches) };
 
@@ -395,6 +398,7 @@ int patch_engine_apply(unsigned char *game_image, const ModOptions *options) {
     photo_sampling_prepare_patch(options);
     steering_wheel_prepare_patch(game_image, options);
     ghost_traffic_prepare_patch(options);
+    sky_road_prepare_hook(game_image);
     camera_fov_prepare_hooks(game_image);
     rims_prepare_hook(game_image);
     drift_camera_prepare_hook(game_image);

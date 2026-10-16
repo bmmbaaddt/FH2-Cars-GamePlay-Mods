@@ -39,6 +39,7 @@ static const struct {
     {'B', "e3_keyboard_shortcuts.fh2mods_snap_to_road"},
 };
 static int keys_down[ARRAY_COUNT(bindings)];
+static int sky_key_down;
 static const char *volatile pending_flow;
 static uint64_t pending_since;
 static int update_seen;
@@ -67,6 +68,15 @@ void world_keys_prepare_hook(unsigned char *image) {
 
 void world_keys_tick(int focused) {
     int ctrl = focused && game_input_key_down(VK_CONTROL);
+    int sky_key = ctrl && game_input_key_down('F');
+    if (sky_key && !sky_key_down) {
+        if (sky_road_active()) {  // coming down: the snap-to-road script puts the car back on a road
+            pending_since = GetTickCount64();
+            pending_flow = "e3_keyboard_shortcuts.fh2mods_snap_to_road";
+        }
+        sky_road_toggle();
+    }
+    sky_key_down = sky_key;
     for (unsigned i = 0; i < ARRAY_COUNT(bindings); ++i) {
         int down = ctrl && game_input_key_down(bindings[i].key);
         if (down && !keys_down[i]) {

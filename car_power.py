@@ -45,23 +45,24 @@ if '--list' in sys.argv:
 shutil.copy2(ORIG, DB)
 if '--restore' in sys.argv: sys.exit('restored the original game database')
 
-def installed_engines():
-    """car id -> engine id actually fitted in the newest save (engine swaps differ from stock)."""
+def installed_parts():
+    """car id -> (engine id, drivetrain id) actually fitted in the newest save (engine and drivetrain swaps differ from stock)."""
     dbs = glob.glob(os.path.join(SAVES, '**', 'revisions', '*', 'data', 'PlayerDatabase'), recursive=True)
-    if not dbs: return {}
+    if not dbs: return {}, {}
     blob = open(max(dbs, key=os.path.getmtime), 'rb').read()
     tmp = os.path.join(tempfile.mkdtemp(), 'save.sqlite')
     open(tmp, 'wb').write(blob[8:8 + struct.unpack('<I', blob[4:8])[0]])
     s = sqlite3.connect(tmp)
-    rows = s.execute('select CarId, Engine from Career_Garage').fetchall()
+    rows = s.execute('select CarId, Engine, Drivetrain from Career_Garage').fetchall()
     s.close(); shutil.rmtree(os.path.dirname(tmp))
-    return {car: db.execute('select EngineID from List_UpgradeEngine where Id=?', (part,)).fetchone()[0] for car, part in rows if part != -1}
+    return ({car: db.execute('select EngineID from List_UpgradeEngine where Id=?', (e,)).fetchone()[0] for car, e, d in rows if e != -1},
+            {car: db.execute('select DrivetrainID from List_UpgradeDrivetrain where Id=?', (d,)).fetchone()[0] for car, e, d in rows if d != -1})
 
 cars = {int(k): v for k, v in json.load(open(CARS_JSON)).items()}
 db = sqlite3.connect(DB)
-engines = installed_engines()
+engines, drivetrains = installed_parts()
 tire_cols = [r[1] for r in db.execute('pragma table_info(List_TireCompound)')]
-boosted = set()
+boosted, revved, geared = set(), set(), set()
 for n, (cid, m) in enumerate(cars.items()):
     db.execute('update Data_Car set GameTorqueScale=GameTorqueScale*?, BodyAeroLongitudinalDrag=BodyAeroLongitudinalDrag*?, '
                'BodyAeroForwardDownforceFront=BodyAeroForwardDownforceFront*?, BodyAeroForwardDownforceRear=BodyAeroForwardDownforceRear*? where Id=?',
@@ -83,6 +84,16 @@ for n, (cid, m) in enumerate(cars.items()):
         for t in TURBO_TABLES:
             db.execute(f'update {t} set MaxScale=MaxScale*?, PowerMaxScale=PowerMaxScale*0.7, MinScale=max(MinScale, 1.0) where EngineID=?', (m['turbo'], engine))
         boosted.add(engine)
+    # rev limit: the redline and the torque curve's rpm range stretch together, so the engine pulls to the new limit
+    if m.get('redline', 1) != 1 and engine not in revved:
+        db.execute('update List_UpgradeEngineCamshaft set RedlineRPM=RedlineRPM*?, TorqueCurveMaxRPM=TorqueCurveMaxRPM*? where EngineID=?', (m['redline'], m['redline'], engine))
+        revved.add(engine)
+    # gearing: a shorter final drive makes every gear taller (higher top speed, slower acceleration) on every
+    # transmission of the fitted drivetrain; in-game gear tuning still works on top
+    drivetrain = drivetrains.get(cid) or db.execute('select DrivetrainID from List_UpgradeDrivetrain where Ordinal=? and IsStock=1', (cid,)).fetchone()[0]
+    if m.get('gearing', 1) != 1 and drivetrain not in geared:
+        db.execute('update List_UpgradeDrivetrainTransmission set FinalDriveRatio=FinalDriveRatio/? where DrivetrainID=?', (m['gearing'], drivetrain))
+        geared.add(drivetrain)
     print(cid, m, 'tire' if tire else 'no road tire found')
 db.commit()
 assert db.execute('pragma integrity_check').fetchone()[0] == 'ok'
