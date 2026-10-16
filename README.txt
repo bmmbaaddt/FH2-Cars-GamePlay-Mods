@@ -1,8 +1,9 @@
 FH2 Mods - a settings window for Forza Horizon 2 (Xbox One) on Azimuth
 ========================================================================
 
-Change traffic, money, skills, the cockpit camera and per-car performance
-(power, drag, downforce, grip, brakes, turbo) from one window.
+Change traffic, crashes, money, skills, the cockpit camera and per-car
+performance (power, drag, downforce, grip, brakes, turbo) from one window,
+and get keyboard keys for lights, indicators, time and weather.
 
 Not affiliated with Microsoft, Playground Games, Turn 10 or Azimuth.
 Azimuth's developer does not support modded setups: if something breaks,
@@ -12,9 +13,13 @@ use "Restore originals" before asking them for help.
 REQUIREMENTS
 ------------
 - Windows 10 or 11 (PowerShell 5.1, already part of Windows)
-- Forza Horizon 2 for Xbox One (1.0.0.64) running on Azimuth 0.9.9
+- Forza Horizon 2 for Xbox One (1.0.0.64) running on Azimuth 0.9.9 or 0.9.10
 - Python 3 on PATH, for the car list and car mods
   (python.org, tick "Add python.exe to PATH" when installing)
+- ExtraOptions installed in data\bin, for ghost cars and the keyboard keys.
+  Apply swaps it for the included build that adds these features; your
+  original is backed up and comes back with "Restore originals".
+  Works with the LivingCockpit loader too.
 
 
 INSTALL
@@ -27,8 +32,11 @@ INSTALL
 2. Double-click "FH2 Mods.bat".
 
 The first run copies the original game files it changes into
-<Azimuth folder>\backup_original\media. Every Apply rebuilds from that copy,
+<Azimuth folder>\backup_original. Every Apply rebuilds from that copy,
 so settings never stack up and a car set back to x1 is really stock again.
+
+Updating from an older version: replace the whole "FH2 Mods" folder (keep
+settings.json and cars.json if you want your values), then press Apply.
 
 
 USE
@@ -38,7 +46,12 @@ USE
 - Restore originals puts every original file back.
 
 Traffic        free roam density in percent (0 = none, 100 = normal, up to 300),
-               traffic on/off in races and road trips
+               traffic on/off in races and road trips,
+               ghost cars: drive through every other car (they stay visible)
+Crashes        less spinning and flipping (reduces it, does not remove it),
+               slide along walls, barriers and trees instead of stopping dead,
+               light breakables: fences, signs, posts and bins barely slow you
+World keys     Ctrl shortcuts for time, weather, traffic, repair (see below)
 Money          CR per level-up, CR per km driven in races
 Skills         skill points and chain XP multipliers, highest chain multiplier,
                seconds allowed between skills (0 = the game's own),
@@ -55,6 +68,29 @@ Keep your total CR under about 2,000,000,000: the game may store it as a
 32-bit number.
 
 
+KEYBOARD SHORTCUTS
+------------------
+While driving (always on):
+  L        headlights on/off
+  Q        left indicator (press again to switch off)
+  E        right indicator (press again to switch off)
+  H        hazard lights (press again to switch off)
+Change them in data\bin\FH2_ExtraOptions.ini, section [Keyboard]
+(a letter, a digit, F1-F12, or off). FH2 has no horn.
+
+World keys (free roam, tick "World keys" in the window):
+  Ctrl+T   midnight
+  Ctrl+Y   sunrise (06:30)
+  Ctrl+U   midday
+  Ctrl+I   sunset (17:50)
+  Ctrl+P   freeze / unfreeze the clock
+  Ctrl+W   rain
+  Ctrl+R   clear weather
+  Ctrl+G   traffic off / on
+  Ctrl+N   repair the car
+  Ctrl+B   put the car back on the road
+
+
 FILE OVERRIDES (optional)
 -------------------------
 A file placed at "FH2 Mods\files\<zip name>\<file name>" replaces that file
@@ -65,9 +101,19 @@ The tool's own settings are still applied on top.
 
 FILES
 -----
-FH2 Mods.bat     starts the window
-FH2 Mods.ps1     the window
-apply.ps1        writes traffic/money/skills/camera into the game's zips
-car_power.py     writes car mods into the game database
-settings.json    the window's values
-cars.json        per-car multipliers
+FH2 Mods.bat                  starts the window
+FH2 Mods.ps1                  the window
+apply.ps1                     writes the settings into the game files
+car_power.py                  writes car mods into the game database
+settings.json                 the window's values
+cars.json                     per-car multipliers
+ExtraOptions\azimuth-tls.dll  ExtraOptions with ghost cars and keyboard keys
+ExtraOptions\source\          its source code
+
+
+LICENSE
+-------
+The tool is MIT (LICENSE.txt). ExtraOptions\ is a modified version of
+ForzaHorizon2_ExtraOptions by RokkuDayo
+(https://github.com/RokkuDayo/ForzaHorizon2_ExtraOptions) and stays under
+the GPL-3 (ExtraOptions\source\LICENSE).

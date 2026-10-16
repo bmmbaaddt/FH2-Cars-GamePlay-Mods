@@ -30,6 +30,16 @@ Section 'Traffic'
 NumberRow 'FreeRoamTrafficPercent' 'Free roam traffic (%)  0 = off, 100 = normal' 0 300 0 10
 CheckRow 'RaceTraffic' 'Traffic in races and showcases'
 CheckRow 'RoadTripTraffic' 'Traffic in road trips'
+if ($null -eq $s.GhostTraffic) { $s | Add-Member GhostTraffic $false }   # settings.json from before this option
+CheckRow 'GhostTraffic' 'Ghost cars: drive through every other car (they stay visible)'
+Section 'Crashes'
+foreach ($k in 'NoCrashSpin', 'SlideOffWalls', 'LightBreakables') { if ($null -eq $s.$k) { $s | Add-Member $k $false } }   # settings.json from before these options
+CheckRow 'NoCrashSpin' 'Less spinning and flipping from crashes (reduces it, does not remove it)'
+CheckRow 'SlideOffWalls' 'Slide along walls and barriers instead of stopping dead'
+CheckRow 'LightBreakables' 'Breakables (fences, signs, bins...) weigh almost nothing, so they barely slow you'
+Section 'World keys  (free roam)'
+if ($null -eq $s.WorldControls) { $s | Add-Member WorldControls $false }   # settings.json from before this option
+CheckRow 'WorldControls' "Time: Ctrl+T midnight, Y sunrise, U midday, I sunset, P freeze clock`nWeather: Ctrl+W rain, R clear`nCtrl+G traffic off/on, N repair, B back on the road"
 Section 'Money'
 NumberRow 'CreditsPerLevel' 'CR per level-up' 0 999999999 0 1000000
 NumberRow 'CreditsPerKm' 'CR per km in races' 0 100000000 0 10000
