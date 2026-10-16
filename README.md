@@ -16,7 +16,7 @@ A settings window for **Forza Horizon 2 (Xbox One)** running on **Azimuth**. Cha
 | Money | CR per level-up, CR per km driven in races |
 | Skills | Skill points and chain XP multipliers, highest chain multiplier, seconds allowed between skills, crashes not ending the skill chain |
 | Cockpit camera | Field of view and seat position |
-| Car mods | Pick any car and set power, air drag, downforce, tire grip, brakes, turbo boost, gearing and rev limit (x1 = stock, up to x100) |
+| Car mods | Pick any car (the traffic bus and box truck too) and set power, air drag, downforce, tire grip, brakes, turbo boost, gearing and rev limit (x1 = stock, up to x100), and the number of forward gears (up to 8) |
 
 - **Restore originals** puts every game file back in one click, including the original ExtraOptions.
 - The original game files are backed up on first run, and every Apply rebuilds from them, so settings never stack up.
@@ -84,6 +84,28 @@ Updating from an older version: replace the whole **FH2 Mods** folder (keep your
 - Ghost cars applies to race opponents too, not only free roam traffic.
 - Big solid scenery (trees, light poles, walls, bridges) stays solid; only breakable objects are made light.
 
+## Using ForzaInfinity?
+
+[ForzaInfinity](https://github.com/anarqz/ForzaInfinity) (online play) is its own ExtraOptions build, and Azimuth loads only one, so the two can't run together. Apply leaves ForzaInfinity in place and tells you so. With ForzaInfinity installed:
+
+| Works | Off |
+|---|---|
+| Traffic density, crashes, light breakables, money, skills, cockpit camera, world key scripts | **Ghost cars**, **keyboard keys** (lights, indicators, Ctrl world keys) and **sky road**: they need the FH2 Mods ExtraOptions |
+| Car mods, **but** ForzaInfinity then plays **offline**: its server only takes the game's original car database | |
+
+What to do:
+- **To play online with ForzaInfinity:** press **Restore originals** first. Its server checks saves, and money, XP or car mods can get a profile flagged or reset.
+- **To play offline with every feature:** run ForzaInfinity's `Uninstall.cmd`, then press **Apply** in FH2 Mods.
+- Switch back and forth the same way; Restore originals always puts everything back.
+
+## Apply failed? (troubleshooting)
+
+Copy **Diagnose.bat** into the FH2 Mods folder if it isn't there, double-click it, and send the `diagnose.txt` it writes. It changes nothing; it compares your game files and the tool's backup with the genuine game files and shows what is different.
+
+- **`pattern not found in ...`**: that game file was already changed by something else (another tool, a hand edit, or an Apply from another Azimuth folder) before this tool made its backup. Put the original file back from your game download, delete the same file from `backup_original\media` next to azimuth.exe, then Apply again.
+- **`game not found`**: put the FH2 Mods folder next to azimuth.exe, add the game in Azimuth and start it once.
+- **Empty car list**: install Python 3 and tick "Add python.exe to PATH".
+
 ## File overrides (optional)
 
 A file placed at `FH2 Mods\files\<zip name>\<file name>` replaces that file inside the game's zip on Apply, for example `FH2 Mods\files\Camera.zip\CameraPhysics.xml`. The tool's own settings are still applied on top.
@@ -98,6 +120,7 @@ A file placed at `FH2 Mods\files\<zip name>\<file name>` replaces that file insi
 | `car_power.py` | Writes car mods into the game database |
 | `settings.json` | The window's values |
 | `cars.json` | Per-car multipliers |
+| `Diagnose.bat`, `diagnose.ps1` | Read-only check when Apply fails; writes `diagnose.txt` |
 | `ExtraOptions\azimuth-tls.dll` | ExtraOptions with ghost cars and keyboard keys added |
 | `ExtraOptions\source\` | Its source code (GPL-3) |
 

@@ -45,7 +45,10 @@ if ($Restore) {
   }
   'restored original files'; return
 }
-if ($eoTarget -and (Test-Path $eoFork) -and (Get-FileHash $eoTarget).Hash -ne (Get-FileHash $eoFork).Hash) {
+# ForzaInfinity (online play) is an ExtraOptions build too: replacing it would switch it off, so it stays
+$infinity = $eoTarget -and [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($eoTarget)).Contains('fh2online')
+if ($infinity) { '  ForzaInfinity found: left as it is. Ghost cars, keyboard keys and sky road need the FH2 Mods ExtraOptions, so they are off (uninstall ForzaInfinity to use them). Car mods make ForzaInfinity play offline.' }
+elseif ($eoTarget -and (Test-Path $eoFork) -and (Get-FileHash $eoTarget).Hash -ne (Get-FileHash $eoFork).Hash) {
   if (-not (Test-Path $eoBackup)) { New-Item -ItemType Directory -Force (Split-Path $eoBackup) | Out-Null; Copy-Item $eoTarget $eoBackup }
   Copy-Item -Force $eoFork $eoTarget
   "  ExtraOptions: installed the FH2 Mods build ($(Split-Path -Leaf $eoTarget))"
@@ -80,7 +83,7 @@ $patches = @{
   }
   'GameTunableSettings.zip' = @{
     'PlayerXPLevels.xml' = @(
-      ,@('CreditRewardPerLevel="0"', "CreditRewardPerLevel=""$([long]$s.CreditsPerLevel)""")
+      ,@('CreditRewardPerLevel="\d+"', "CreditRewardPerLevel=""$([long]$s.CreditsPerLevel)""")   # set outright, so a value another tool already changed is fine too
     )
     'Skills.xml' = @(
       ,@('Fame="([\d.]+)"', { param($m) 'Fame="{0}"' -f (Num ([double]$m.Groups[1].Value * $s.SkillPointsMultiplier)) }.GetNewClosure())

@@ -71,12 +71,13 @@ $carBox = New-Object Windows.Forms.ComboBox -Property @{ Width = 260; AutoComple
 $carList | ForEach-Object { [void]$carBox.Items.Add($_.name) }   # item index = index in $carList
 function SelectedCar { if ($carBox.SelectedIndex -ge 0) { [int]$carList[$carBox.SelectedIndex].id } }
 $grid.Controls.Add($carBox)
-$carFields = [ordered]@{ power = 'Power  (x)'; drag = 'Air drag  (x, lower = faster)'; downforce = 'Downforce  (x)'; grip = 'Tire grip  (x)'; brakes = 'Brake strength  (x)'; turbo = 'Turbo boost  (x, turbo cars only)'; gearing = 'Gearing  (x, higher = taller gears, more top speed)'; redline = 'Rev limit  (x)' }
+$carFields = [ordered]@{ power = 'Power  (x)'; drag = 'Air drag  (x, lower = faster)'; downforce = 'Downforce  (x)'; grip = 'Tire grip  (x)'; brakes = 'Brake strength  (x)'; turbo = 'Turbo boost  (x, turbo cars only)'; gearing = 'Gearing  (x, higher = taller gears, more top speed)'; redline = 'Rev limit  (x)'; gears = 'Forward gears  (1 = stock gearbox, up to 8)' }
 $carInputs = @{}
 $loading = $false
 foreach ($k in $carFields.Keys) {
   $grid.Controls.Add((New-Object Windows.Forms.Label -Property @{ Text = $carFields[$k]; AutoSize = $true; Anchor = 'Left'; Margin = '0,6,12,0' }))
   $n = New-Object Windows.Forms.NumericUpDown -Property @{ Minimum = 0.1; Maximum = 100; DecimalPlaces = 2; Increment = 0.1; Width = 160; Value = 1; Enabled = $false }
+  if ($k -eq 'gears') { $n.Minimum = 1; $n.Maximum = 8; $n.DecimalPlaces = 0; $n.Increment = 1 }   # a count, not a multiplier
   $n.Add_ValueChanged({
     $id = SelectedCar
     if ($loading -or $null -eq $id) { return }

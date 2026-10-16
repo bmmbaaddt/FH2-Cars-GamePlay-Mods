@@ -38,31 +38,32 @@ if not os.path.exists(ORIG): os.makedirs(os.path.dirname(ORIG), exist_ok=True); 
 if '--list' in sys.argv:
     g = sqlite3.connect(f'file:{ORIG}?mode=ro', uri=True)
     rows = g.execute("select c.Id, m.IconPathBase, c.MediaName, c.Year from Data_Car c join List_CarMake m on m.ID=c.MakeID "
-                     "where c.MediaName not like 'PG\\_%' escape '\\' and c.MediaName not like 'NUL\\_%' escape '\\' order by m.IconPathBase, c.MediaName").fetchall()
-    print(json.dumps([{'id': i, 'name': f"{make} {media.split('_')[1]} ({year})"} for i, make, media, year in rows]))
+                     "where c.MediaName not like 'NUL\\_%' escape '\\' order by m.IconPathBase, c.MediaName").fetchall()   # PG_ = the drivable bus and box truck
+    print(json.dumps([{'id': i, 'name': f"{'Traffic' if make == 'PG' else make} {media.split('_')[1]} ({year})"} for i, make, media, year in rows]))
     sys.exit()
 
 shutil.copy2(ORIG, DB)
 if '--restore' in sys.argv: sys.exit('restored the original game database')
 
 def installed_parts():
-    """car id -> (engine id, drivetrain id) actually fitted in the newest save (engine and drivetrain swaps differ from stock)."""
+    """car id -> engine id, drivetrain id, transmission row actually fitted in the newest save (swaps differ from stock)."""
     dbs = glob.glob(os.path.join(SAVES, '**', 'revisions', '*', 'data', 'PlayerDatabase'), recursive=True)
-    if not dbs: return {}, {}
+    if not dbs: return {}, {}, {}
     blob = open(max(dbs, key=os.path.getmtime), 'rb').read()
     tmp = os.path.join(tempfile.mkdtemp(), 'save.sqlite')
     open(tmp, 'wb').write(blob[8:8 + struct.unpack('<I', blob[4:8])[0]])
     s = sqlite3.connect(tmp)
-    rows = s.execute('select CarId, Engine, Drivetrain from Career_Garage').fetchall()
+    rows = s.execute('select CarId, Engine, Drivetrain, Transmission from Career_Garage').fetchall()
     s.close(); shutil.rmtree(os.path.dirname(tmp))
-    return ({car: db.execute('select EngineID from List_UpgradeEngine where Id=?', (e,)).fetchone()[0] for car, e, d in rows if e != -1},
-            {car: db.execute('select DrivetrainID from List_UpgradeDrivetrain where Id=?', (d,)).fetchone()[0] for car, e, d in rows if d != -1})
+    return ({car: db.execute('select EngineID from List_UpgradeEngine where Id=?', (e,)).fetchone()[0] for car, e, d, g in rows if e != -1},
+            {car: db.execute('select DrivetrainID from List_UpgradeDrivetrain where Id=?', (d,)).fetchone()[0] for car, e, d, g in rows if d != -1},
+            {car: g for car, e, d, g in rows if g != -1})
 
 cars = {int(k): v for k, v in json.load(open(CARS_JSON)).items()}
 db = sqlite3.connect(DB)
-engines, drivetrains = installed_parts()
+engines, drivetrains, transmissions = installed_parts()
 tire_cols = [r[1] for r in db.execute('pragma table_info(List_TireCompound)')]
-boosted, revved, geared = set(), set(), set()
+boosted, revved, geared, regeared = set(), set(), set(), set()
 for n, (cid, m) in enumerate(cars.items()):
     db.execute('update Data_Car set GameTorqueScale=GameTorqueScale*?, BodyAeroLongitudinalDrag=BodyAeroLongitudinalDrag*?, '
                'BodyAeroForwardDownforceFront=BodyAeroForwardDownforceFront*?, BodyAeroForwardDownforceRear=BodyAeroForwardDownforceRear*? where Id=?',
@@ -94,6 +95,16 @@ for n, (cid, m) in enumerate(cars.items()):
     if m.get('gearing', 1) != 1 and drivetrain not in geared:
         db.execute('update List_UpgradeDrivetrainTransmission set FinalDriveRatio=FinalDriveRatio/? where DrivetrainID=?', (m['gearing'], drivetrain))
         geared.add(drivetrain)
+    # gears: the fitted gearbox gets this many forward gears, keeping 1st and the stock step between gears
+    # (so extra gears are taller than the old top gear); the game supports up to 8
+    box = transmissions.get(cid) or db.execute('select Id from List_UpgradeDrivetrainTransmission where DrivetrainID=? and IsStock=1', (drivetrain,)).fetchone()[0]
+    if m.get('gears', 1) > 1 and box not in regeared:   # 1 = stock gearbox
+        count, first = db.execute('select NumGears - 1, GearRatio1 from List_UpgradeDrivetrainTransmission where Id=?', (box,)).fetchone()
+        top = db.execute(f'select GearRatio{count} from List_UpgradeDrivetrainTransmission where Id=?', (box,)).fetchone()[0]
+        n = min(int(m['gears']), 8)
+        ratios = [first * (top / first) ** (k / (count - 1)) for k in range(n)] + [-1.0] * (8 - n)
+        db.execute(f'update List_UpgradeDrivetrainTransmission set NumGears=?, {", ".join(f"GearRatio{k + 1}=?" for k in range(8))} where Id=?', (n + 1, *ratios, box))
+        regeared.add(box)
     print(cid, m, 'tire' if tire else 'no road tire found')
 db.commit()
 assert db.execute('pragma integrity_check').fetchone()[0] == 'ok'

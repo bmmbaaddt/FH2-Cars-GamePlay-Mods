@@ -62,7 +62,8 @@ Car mods       pick a car, set multipliers (x1 = stock). Grip and brakes act on 
                Turbo only does something on a turbocharged engine.
                Gearing (higher = taller gears, more top speed) and rev limit
                also affect other cars that share the same swap part.
-               Multipliers go up to x100.
+               Multipliers go up to x100. Forward gears: 1 = stock gearbox,
+               up to 8. The traffic bus and box truck are in the list too.
 
 Very high power on a car with stock tires and rear-wheel drive will mostly
 spin the wheels. Raise grip and brakes along with power.
@@ -97,6 +98,38 @@ World keys (free roam, tick "World keys" in the window):
            For top speed runs, prefer low grip and low downforce instead.
 
 
+USING FORZAINFINITY?
+--------------------
+ForzaInfinity (online play) is its own ExtraOptions build, and Azimuth loads
+only one, so the two can't run together. Apply leaves ForzaInfinity in place.
+With ForzaInfinity installed:
+  Works:  traffic density, crashes, light breakables, money, skills,
+          cockpit camera, world key scripts
+  Off:    ghost cars, keyboard keys (lights, indicators, Ctrl world keys)
+          and sky road (they need the FH2 Mods ExtraOptions)
+  Car mods work, but ForzaInfinity then plays OFFLINE (its server only
+  takes the game's original car database).
+What to do:
+  - Online with ForzaInfinity: press "Restore originals" first. Its server
+    checks saves; money, XP or car mods can get a profile flagged or reset.
+  - Offline with every feature: run ForzaInfinity's Uninstall.cmd, then
+    press Apply.
+
+
+APPLY FAILED? (troubleshooting)
+-------------------------------
+Double-click Diagnose.bat and send the diagnose.txt it writes. It changes
+nothing; it compares your game files and the tool's backup with the genuine
+game files and shows what is different.
+  "pattern not found in ..."  that game file was already changed by
+      something else before this tool made its backup. Put the original file
+      back from your game download, delete the same file from
+      <Azimuth folder>\backup_original\media, then Apply again.
+  "game not found"  put FH2 Mods next to azimuth.exe, add the game in
+      Azimuth and start it once.
+  Empty car list  install Python 3 with "Add python.exe to PATH".
+
+
 FILE OVERRIDES (optional)
 -------------------------
 A file placed at "FH2 Mods\files\<zip name>\<file name>" replaces that file
@@ -113,6 +146,7 @@ apply.ps1                     writes the settings into the game files
 car_power.py                  writes car mods into the game database
 settings.json                 the window's values
 cars.json                     per-car multipliers
+Diagnose.bat, diagnose.ps1    read-only check when Apply fails
 ExtraOptions\azimuth-tls.dll  ExtraOptions with ghost cars and keyboard keys
 ExtraOptions\source\          its source code
 

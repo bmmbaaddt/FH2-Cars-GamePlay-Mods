@@ -13,7 +13,7 @@ jobs:
       - name: Build zip
         run: |
           mkdir "FH2 Mods"
-          cp "FH2 Mods.bat" "FH2 Mods.ps1" README.txt apply.ps1 car_power.py cars.json settings.json "FH2 Mods/"
+          cp "FH2 Mods.bat" "FH2 Mods.ps1" README.txt apply.ps1 car_power.py cars.json settings.json Diagnose.bat diagnose.ps1 "FH2 Mods/"
           cp LICENSE "FH2 Mods/LICENSE.txt"
           cp -r ExtraOptions "FH2 Mods/"
           zip -r "FH2-Cars-GamePlay-Mods-${GITHUB_REF_NAME}.zip" "FH2 Mods"
