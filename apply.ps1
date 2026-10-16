@@ -6,12 +6,15 @@
 # -Restore: put the original files back.
 param([string]$Settings = (Join-Path $PSScriptRoot 'settings.json'), [switch]$RoundTrip, [switch]$Restore)
 $ErrorActionPreference = 'Stop'
-# this folder sits next to azimuth.exe; the game is the folder under it with Mount\media
+# this folder sits next to azimuth.exe; the game is wherever Azimuth's folder= points (any drive), else a folder beside it with Mount\media
 $root   = Split-Path $PSScriptRoot
-$manifestFile = Get-ChildItem $root -Directory | ForEach-Object { Join-Path $_.FullName 'Mount\media\zipmanifest.xml' } | Where-Object { Test-Path $_ } | Select-Object -First 1
-if (-not $manifestFile) { throw "game not found: put the FH2 Mods folder next to azimuth.exe" }
+$azIni = Join-Path $root 'data\azimuth.ini'
+$azText = if (Test-Path $azIni) { [IO.File]::ReadAllText($azIni) } else { '' }
+$candidates = @([regex]::Matches($azText, '(?m)^(?:folder|game_folder)=(.+?)\s*$') | ForEach-Object { $_.Groups[1].Value.Trim('"') }) + @(Get-ChildItem $root -Directory | ForEach-Object FullName)
+$manifestFile = $candidates | ForEach-Object { Join-Path ([IO.Path]::Combine($root, $_)) 'Mount\media\zipmanifest.xml' } | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+if (-not $manifestFile) { throw "game not found: put the FH2 Mods folder next to azimuth.exe, and add the game in Azimuth and start it once" }
 $media  = Split-Path $manifestFile
-$gameFolder = Split-Path -Leaf (Split-Path (Split-Path $media))
+$gameFolder = Split-Path (Split-Path $media)   # full path; ExtraOptions accepts absolute folders
 $backup = Join-Path $root 'backup_original\media'
 if (Get-Process azimuth -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$root\*" }) { throw 'close the game first' }
 $zips   = 'Camera.zip', 'GameTunableSettings.zip', 'EntityModel.zip'
@@ -25,8 +28,6 @@ if ($Restore) {
 }
 
 # ExtraOptions finds the game through [launcher] game_folder, which Azimuth 0.9.9 no longer writes (it may drop it again on a settings change).
-$azIni = Join-Path $root 'data\azimuth.ini'
-$azText = if (Test-Path $azIni) { [IO.File]::ReadAllText($azIni) } else { '' }
 if ($azText -match '(?m)^\[launcher\]' -and $azText -notmatch '(?m)^game_folder=') { [IO.File]::WriteAllText($azIni, ($azText -replace '(?m)^\[launcher\]\r?\n', "[launcher]`r`ngame_folder=$gameFolder`r`n"), [Text.Encoding]::Unicode); '  azimuth.ini: game_folder added back for ExtraOptions' }
 
 $s = Get-Content $Settings -Raw | ConvertFrom-Json

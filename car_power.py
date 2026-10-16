@@ -3,13 +3,26 @@
 #   python car_power.py            apply cars.json
 #   python car_power.py --list     print every drivable car as JSON (for the settings window)
 #   python car_power.py --restore  put the original database back
-import glob, json, os, shutil, sqlite3, struct, subprocess, sys, tempfile
+import glob, json, os, re, shutil, sqlite3, struct, subprocess, sys, tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)   # this folder sits next to azimuth.exe
-found = glob.glob(os.path.join(ROOT, '*', 'Mount', 'media', 'stripped', 'gamedbRC.slt'))
-if not found: sys.exit('game not found: put the FH2 Mods folder next to azimuth.exe')
-DB = found[0]
+
+def find_game_db():
+    # the game is wherever Azimuth's folder= points (any drive), else a folder beside azimuth.exe
+    folders = []
+    try:
+        raw = open(os.path.join(ROOT, 'data', 'azimuth.ini'), 'rb').read()
+        text = raw.decode('utf-16') if raw[:2] in (b'\xff\xfe', b'\xfe\xff') else raw.decode('utf-8', 'ignore')
+        folders = [f.strip('"') for f in re.findall(r'(?m)^(?:folder|game_folder)=(.+?)\s*$', text)]
+    except OSError:
+        pass
+    for folder in folders + glob.glob(os.path.join(ROOT, '*')):
+        db = os.path.join(ROOT, folder, 'Mount', 'media', 'stripped', 'gamedbRC.slt')   # join keeps absolute folders as they are
+        if os.path.exists(db): return db
+
+DB = find_game_db()
+if not DB: sys.exit('game not found: put the FH2 Mods folder next to azimuth.exe, and add the game in Azimuth and start it once')
 ORIG = os.path.join(ROOT, 'backup_original', 'media', 'gamedbRC.slt')
 SAVES = os.path.join(ROOT, 'data', 'titles')   # Azimuth 0.9.9 keeps saves per game: data\titles\<id>\saves
 CARS_JSON = os.path.join(HERE, 'cars.json')

@@ -22,7 +22,8 @@ INSTALL
 1. Put the "FH2 Mods" folder next to azimuth.exe:
      <Azimuth folder>\azimuth.exe
      <Azimuth folder>\FH2 Mods\FH2 Mods.bat
-     <Azimuth folder>\<game folder>\Mount\media\...
+   The game itself can be anywhere (any folder or drive): the tool finds it
+   through Azimuth's settings, so add the game in Azimuth and start it once.
 2. Double-click "FH2 Mods.bat".
 
 The first run copies the original game files it changes into

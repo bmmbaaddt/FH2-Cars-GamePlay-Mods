@@ -33,8 +33,8 @@ A settings window for **Forza Horizon 2 (Xbox One)** running on **Azimuth**. Cha
    ```
    <Azimuth folder>\azimuth.exe
    <Azimuth folder>\FH2 Mods\FH2 Mods.bat
-   <Azimuth folder>\<game folder>\Mount\media\...
    ```
+   The game itself can be anywhere (any folder or drive): the tool finds it through Azimuth's settings, so add the game in Azimuth and start it once first.
 3. **Close the game**, then double-click **FH2 Mods.bat**.
 4. Change what you want, then press **Apply**, or **Apply & Play** to also start the game.
 
