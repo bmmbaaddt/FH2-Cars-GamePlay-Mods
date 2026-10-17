@@ -41,31 +41,131 @@ static GameString borrowed_string(const char *text) {
     return (GameString){text, 0, length, length < 16 ? 16 : length};
 }
 
-static const StockWheelAssets *find_wheel(const GameString *name) {
+static char lower_ascii(char value) {
+    return value >= 'A' && value <= 'Z' ? value + ('a' - 'A') : value;
+}
+
+static int compare_name(const GameString *name, const char *candidate) {
     const char *text = string_data(name);
-    for (unsigned index = 0; index < ARRAY_COUNT(stock_wheels); ++index) {
-        if (text_equal_ignore_case(text, stock_wheels[index].name)) {
-            return &stock_wheels[index];
+    size_t index = 0;
+    while (index < name->length && candidate[index]) {
+        int difference = lower_ascii(text[index]) - lower_ascii(candidate[index]);
+        if (difference) {
+            return difference;
+        }
+        ++index;
+    }
+    return index < name->length ? 1 : candidate[index] ? -1 : 0;
+}
+
+static const StockWheelAssets *find_wheel(const GameString *name) {
+    size_t first = 0, end = ARRAY_COUNT(stock_wheels);
+    while (first < end) {
+        size_t middle = first + (end - first) / 2;
+        int comparison = compare_name(name, stock_wheels[middle].name);
+        if (!comparison) {
+            return &stock_wheels[middle];
+        }
+        if (comparison < 0) {
+            end = middle;
+        } else {
+            first = middle + 1;
         }
     }
-    return 0;
+    return NULL;
+}
+
+static const char *donor_name(const StockWheelAssets *wheel) {
+    return wheel->donor ? wheel->donor : wheel->name;
+}
+
+const char *stock_wheel_donor_name(const char *name, size_t length) {
+    GameString key = {name, 0, length, length < 16 ? 16 : length};
+    const StockWheelAssets *wheel = find_wheel(&key);
+    return wheel ? donor_name(wheel) : NULL;
+}
+
+static int append_path(char *output, size_t capacity, size_t *length, const char *text,
+                       int lowercase) {
+    while (*text) {
+        if (*length + 1 >= capacity) {
+            return 0;
+        }
+        output[(*length)++] = lowercase ? lower_ascii(*text) : *text;
+        ++text;
+    }
+    output[*length] = 0;
+    return 1;
+}
+
+static int build_asset_path(char *output, size_t capacity, const StockWheelAssets *wheel,
+                            const char *pattern) {
+    if (!capacity) {
+        return 0;
+    }
+    output[0] = 0;
+    if (!*pattern) {
+        return 1;
+    }
+    size_t length = 0;
+    if (!append_path(output, capacity, &length, "game:\\media\\cars\\", 0)) {
+        return 0;
+    }
+    size_t remaining = text_length(pattern);
+    while (remaining) {
+        const char *replacement = NULL;
+        size_t consumed = 1;
+        if (remaining >= 5 && memory_equal(pattern, "{car}", 5)) {
+            replacement = donor_name(wheel);
+            consumed = 5;
+        } else if (remaining >= 7 && memory_equal(pattern, "{wheel}", 7)) {
+            replacement = wheel->name;
+            consumed = 7;
+        }
+        if (replacement) {
+            if (!append_path(output, capacity, &length, replacement, 1)) {
+                return 0;
+            }
+        } else {
+            if (*pattern == '{' || length + 1 >= capacity) {
+                return 0;
+            }
+            output[length++] = *pattern;
+        }
+        pattern += consumed;
+        remaining -= consumed;
+    }
+    output[length] = 0;
+    return 1;
 }
 
 static GameString *create_archive_path(GameString *output, const StockWheelAssets *wheel) {
+    char path[STOCK_WHEEL_PATH_CAPACITY];
+    size_t length = 0;
+    if (!append_path(path, sizeof(path), &length, "game:\\media\\cars\\", 0) ||
+        !append_path(path, sizeof(path), &length, donor_name(wheel), 0)) {
+        return NULL;
+    }
     *output = (GameString){.capacity = 15};
-    return assign_text(output, wheel->archive, text_length(wheel->archive));
+    return assign_text(output, path, length);
 }
 
 static GameString *stock_archive_text(GameString *output, const char *prefix,
                                       const GameString *name) {
     const StockWheelAssets *wheel = find_wheel(name);
-    return wheel ? create_archive_path(output, wheel) : concat_text(output, prefix, name);
+    if (wheel && create_archive_path(output, wheel)) {
+        return output;
+    }
+    return concat_text(output, prefix, name);
 }
 
 static GameString *stock_archive_string(GameString *output, const GameString *prefix,
                                         const GameString *name) {
     const StockWheelAssets *wheel = find_wheel(name);
-    return wheel ? create_archive_path(output, wheel) : concat_strings(output, prefix, name);
+    if (wheel && create_archive_path(output, wheel)) {
+        return output;
+    }
+    return concat_strings(output, prefix, name);
 }
 
 static int file_exists(void *filesystem, const GameString *path) {
@@ -87,13 +187,23 @@ static unsigned char load_stock_wheels(void *part, const GameString *name) {
         return models_ready(part);
     }
     GameString models[4], textures[4];
+    char model_paths[4][STOCK_WHEEL_PATH_CAPACITY];
+    char texture_paths[4][STOCK_WHEEL_PATH_CAPACITY];
+    const StockWheelLayout *model_layout = &stock_model_layouts[wheel->model_layout];
+    const StockWheelLayout *texture_layout = &stock_texture_layouts[wheel->texture_layout];
     int textures_available = 1;
     for (unsigned index = 0; index < ARRAY_COUNT(models); ++index) {
-        models[index] = borrowed_string(wheel->models[index]);
+        if (!build_asset_path(model_paths[index], sizeof(model_paths[index]), wheel,
+                              model_layout->paths[index]) ||
+            !build_asset_path(texture_paths[index], sizeof(texture_paths[index]), wheel,
+                              texture_layout->paths[index])) {
+            return models_ready(part);
+        }
+        models[index] = borrowed_string(model_paths[index]);
         if (!file_exists(filesystem, &models[index])) {
             return models_ready(part);
         }
-        textures[index] = borrowed_string(wheel->textures[index]);
+        textures[index] = borrowed_string(texture_paths[index]);
         if (!file_exists(filesystem, &textures[index])) {
             textures_available = 0;
         }
@@ -103,6 +213,20 @@ static unsigned char load_stock_wheels(void *part, const GameString *name) {
     // The native replacement copies paths and owns the loaded model resources.
     return replace_models(part, models, textures);
 }
+
+#ifdef FH2_TWEAKS_TEST
+__declspec(dllexport) int Fh2TestStockWheelPath(const char *name, unsigned kind, unsigned corner,
+                                                char *output, size_t capacity) {
+    GameString key = borrowed_string(name);
+    const StockWheelAssets *wheel = find_wheel(&key);
+    if (!wheel || kind > 1 || corner >= 4) {
+        return 0;
+    }
+    const StockWheelLayout *layout = kind ? &stock_texture_layouts[wheel->texture_layout]
+                                          : &stock_model_layouts[wheel->model_layout];
+    return build_asset_path(output, capacity, wheel, layout->paths[corner]);
+}
+#endif
 
 void stock_wheels_prepare_hooks(unsigned char *image) {
     game_image = image;

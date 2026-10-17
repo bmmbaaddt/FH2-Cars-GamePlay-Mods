@@ -5,6 +5,8 @@ from pathlib import Path
 
 SOURCE = Path(__file__).resolve().parent
 SUPPORTED_GROUPS = {
+    "VEHICLE_CONTROLS",
+    "AERO_TUNING",
     "DLC",
     "VIP",
     "INTRO",

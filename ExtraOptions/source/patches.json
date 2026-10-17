@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "version": "0.2.74",
+  "version": "0.2.98",
   "filename": "forza_durango_release_final.exe",
   "size": 58204160,
   "original_sha256": "3ec04c6163fb5614e3d351ba0570d39b846041a257715d6340eceb03ccb7f0a3",
@@ -244,6 +244,34 @@
       "patched": "eb18",
       "rva": 8891494,
       "runtime_group": "BOOT_CAR_MEET"
+    },
+    {
+      "id": "blinker_radio_left_query",
+      "group": "vehicle_controls",
+      "rva": 9850120,
+      "offset": 9847560,
+      "original": "e8f3d77000",
+      "patched": "e8a7000000",
+      "accepted": [
+        "e8f3d77000",
+        "e8a7000000"
+      ],
+      "runtime_group": "VEHICLE_CONTROLS",
+      "description": "Delay D-pad radio changes until a short release; leave native radio eligibility and transition handling intact."
+    },
+    {
+      "id": "blinker_radio_right_query",
+      "group": "vehicle_controls",
+      "rva": 9850168,
+      "offset": 9847608,
+      "original": "e8c3d77000",
+      "patched": "e877000000",
+      "accepted": [
+        "e8c3d77000",
+        "e877000000"
+      ],
+      "runtime_group": "VEHICLE_CONTROLS",
+      "description": "Delay D-pad radio changes until a short release; leave native radio eligibility and transition handling intact."
     },
     {
       "id": "ownership_predicate",
@@ -698,6 +726,47 @@
       "runtime_group": "CLUBS"
     },
     {
+      "id": "aero_front_tuning_unlocked",
+      "group": "aero_tuning",
+      "rva": 15313723,
+      "offset": 15311163,
+      "original": "e810cf4aff",
+      "patched": "b001909090",
+      "accepted": [
+        "e810cf4aff",
+        "b001909090"
+      ],
+      "runtime_group": "AERO_TUNING",
+      "description": "Allow native downforce slider initialization with the current car physics ranges regardless of installed aero upgrade level."
+    },
+    {
+      "id": "aero_rear_tuning_unlocked",
+      "group": "aero_tuning",
+      "rva": 15313831,
+      "offset": 15311271,
+      "original": "e8f4ce4aff",
+      "patched": "b001909090",
+      "accepted": [
+        "e8f4ce4aff",
+        "b001909090"
+      ],
+      "runtime_group": "AERO_TUNING",
+      "description": "Allow native downforce slider initialization with the current car physics ranges regardless of installed aero upgrade level."
+    },
+    {
+      "id": "stock_rim_localized_name_call",
+      "group": "rims",
+      "offset": 15449118,
+      "rva": 15451678,
+      "original": "e86db70100",
+      "accepted": [
+        "e86db70100",
+        "e8513cffff"
+      ],
+      "patched": "e8513cffff",
+      "runtime_group": "RIMS"
+    },
+    {
       "id": "all_rims_categories_query",
       "group": "rims",
       "offset": 15523103,
@@ -767,6 +836,34 @@
       ],
       "runtime_group": "DRIFT_CAMERA",
       "description": "Use a softer chase spring without body-spin coupling; retain native smoothing and orbit."
+    },
+    {
+      "id": "front_aero_physics_ranges",
+      "group": "aero_tuning",
+      "rva": 17135157,
+      "offset": 17132597,
+      "original": "e8069c0000",
+      "patched": "e8fa9b0000",
+      "accepted": [
+        "e8069c0000",
+        "e8fa9b0000"
+      ],
+      "runtime_group": "AERO_TUNING",
+      "description": "Supply actual adjustable downforce and drag ranges for non-adjustable aero parts; preserve stock physics at the default slider value."
+    },
+    {
+      "id": "rear_aero_physics_ranges",
+      "group": "aero_tuning",
+      "rva": 17135280,
+      "offset": 17132720,
+      "original": "e88b9b0000",
+      "patched": "e8af990000",
+      "accepted": [
+        "e88b9b0000",
+        "e8af990000"
+      ],
+      "runtime_group": "AERO_TUNING",
+      "description": "Supply actual adjustable downforce and drag ranges for non-adjustable aero parts; preserve stock physics at the default slider value."
     },
     {
       "id": "sun_shadow_all_cascades_per_frame",
@@ -1093,6 +1190,45 @@
       "patched": "53454c4543542049642c50726f6475637449642c446973706c61794e616d652c4465736372697074696f6e2c496d616765506174682c5468756d62506174682c4973467265652046524f4d20436f6e74656e744f66666572732057484552452856697369626c657c497350757263686173656429414e44205374796c653d274361725061636b274f52444552204259204a554c49414e4441592852656c656173654461746529444553432c312044455343",
       "rva": 32848064,
       "runtime_group": "MARKETPLACE"
+    },
+    {
+      "id": "stock_wheel_variant_query",
+      "group": "rims",
+      "offset": 17363164,
+      "rva": 17365724,
+      "original": "e82fdcfafe",
+      "patched": "e833d9ffff",
+      "accepted": [
+        "e82fdcfafe",
+        "e833d9ffff"
+      ],
+      "runtime_group": "RIMS"
+    },
+    {
+      "id": "hazards_photo_input",
+      "group": "vehicle_controls",
+      "offset": 9847296,
+      "rva": 9849856,
+      "original": "e83ba47000",
+      "patched": "e8cfe4ffff",
+      "accepted": [
+        "e83ba47000",
+        "e8cfe4ffff"
+      ],
+      "runtime_group": "VEHICLE_CONTROLS"
+    },
+    {
+      "id": "hazards_photo_hold_ready",
+      "group": "vehicle_controls",
+      "offset": 9841923,
+      "rva": 9844483,
+      "original": "e878fdffff",
+      "patched": "e85c1d0000",
+      "accepted": [
+        "e878fdffff",
+        "e85c1d0000"
+      ],
+      "runtime_group": "VEHICLE_CONTROLS"
     }
   ],
   "delivery": "runtime-dll",
@@ -1500,6 +1636,123 @@
       "type": "callback_thunk_in_unused_padding",
       "file_normalized": false,
       "option": "Frontend.AllRimsCategory"
+    },
+    {
+      "id": "stock_rim_localized_name_thunk",
+      "rva": 15401588,
+      "original": "cccccccccccccccccccccccc",
+      "runtime_group": "RIMS",
+      "type": "callback_thunk_in_unused_padding",
+      "file_normalized": false,
+      "option": "Frontend.AllRimsCategory"
+    },
+    {
+      "id": "pause_garage_footer",
+      "rva": 48317200,
+      "original_function_rva": 14446128,
+      "runtime_group": "VIDEO_OPTIONS",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "pause_garage_help_action",
+      "rva": 48369104,
+      "original_function_rva": 14578832,
+      "runtime_group": "VIDEO_OPTIONS",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "pause_garage_update",
+      "rva": 48317264,
+      "original_function_rva": 14476896,
+      "runtime_group": "VIDEO_OPTIONS",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "garage_location_activation",
+      "rva": 46763280,
+      "original_function_rva": 5608032,
+      "runtime_group": "VIDEO_OPTIONS",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "blinker_radio_query_thunk",
+      "rva": 9850292,
+      "original": "cccccccccccccccccccccccc",
+      "runtime_group": "VEHICLE_CONTROLS",
+      "type": "callback_thunk_in_unused_padding",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "front_aero_tuning_ranges",
+      "rva": 17175092,
+      "original": "cccccccccccccccccccccccc",
+      "runtime_group": "AERO_TUNING",
+      "type": "callback_thunk_in_unused_padding",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "rear_aero_tuning_ranges",
+      "rva": 17174628,
+      "original": "cccccccccccccccccccccccc",
+      "runtime_group": "AERO_TUNING",
+      "type": "callback_thunk_in_unused_padding",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "stock_rim_part_name_everyman",
+      "rva": 47720096,
+      "original_function_rva": 15429808,
+      "runtime_group": "RIMS",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Frontend.AllRimsCategory"
+    },
+    {
+      "id": "stock_rim_part_name",
+      "rva": 48623392,
+      "original_function_rva": 15429808,
+      "runtime_group": "RIMS",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Frontend.AllRimsCategory"
+    },
+    {
+      "id": "stock_wheel_variant_query_thunk",
+      "rva": 17355796,
+      "original": "cccccccccccccccccccccccc",
+      "runtime_group": "RIMS",
+      "type": "callback_thunk_in_unused_padding",
+      "file_normalized": false,
+      "option": "Frontend.AllRimsCategory"
+    },
+    {
+      "id": "hazards_photo_input_thunk",
+      "rva": 9842900,
+      "original": "cccccccccccccccccccccccc",
+      "runtime_group": "VEHICLE_CONTROLS",
+      "type": "callback_thunk_in_unused_padding",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "hazards_photo_ready_thunk",
+      "rva": 9852004,
+      "original": "cccccccccccccccccccccccc",
+      "runtime_group": "VEHICLE_CONTROLS",
+      "type": "callback_thunk_in_unused_padding",
+      "file_normalized": false,
+      "option": "Global.Enabled"
     }
   ],
   "runtime_data": [
@@ -1512,7 +1765,7 @@
       "type": "dynamic_integer_control",
       "file_normalized": false,
       "option": "PhotoMode.Samples",
-      "description": "Choose native accumulation grid density closest to the requested sample target; 0 retains 129 stock samples."
+      "description": "Override the native photo accumulation grid; Default retains the translation layer setting (129 samples in the original game)."
     }
   ]
 }

@@ -27,34 +27,72 @@ foreach ($f in $zips + $loose + $tracks + 'zipmanifest.xml') {
   $orig = Join-Path $backup $f
   if (-not (Test-Path $orig)) { New-Item -ItemType Directory -Force (Split-Path $orig) | Out-Null; Copy-Item (Join-Path $media $f) $orig }   # backup = untouched original
 }
-# ExtraOptions with this tool's additions (ghost cars, keyboard keys) replaces the installed ExtraOptions DLL:
-# data\bin\azimuth-tls.dll, or azimuth-tls.dll.original when the LivingCockpit loader sits in front of it.
-$eoIni    = Join-Path $root 'data\bin\FH2_ExtraOptions.ini'
-$eoFork   = Join-Path $PSScriptRoot 'ExtraOptions\azimuth-tls.dll'
-$eoBackup = Join-Path $root 'backup_original\ExtraOptions\azimuth-tls.dll'
-$eoTarget = 'azimuth-tls.dll.original', 'azimuth-tls.dll' | ForEach-Object { Join-Path $root "data\bin\$_" } |
-            Where-Object { (Test-Path $_) -and [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($_)).Contains('FH2_ExtraOptions') } | Select-Object -First 1
+# ExtraOptions 0.2.98 with this tool's additions (ghost cars, keyboard keys, world keys, sky road) is a winmm.dll
+# next to azimuth.exe with its ini beside it. Azimuth's TLS helper in data\bin goes back to stock, since an
+# ExtraOptions there (older ones, or ours up to v1.0.4) would patch the game twice. The helper is
+# azimuth-tls.dll.original when a mod loader sits in front of it.
+$eoDll      = Join-Path $PSScriptRoot 'ExtraOptions\winmm.dll'
+$winmm      = Join-Path $root 'winmm.dll'
+$eoIni      = Join-Path $root 'FH2_ExtraOptions.ini'
+$eoBackups  = Join-Path $root 'backup_original\ExtraOptions'
+$tlsTarget  = 'azimuth-tls.dll.original', 'azimuth-tls.dll' | ForEach-Object { Join-Path $root "data\bin\$_" } | Where-Object { Test-Path $_ } | Select-Object -First 1
+function FileHas($path, $text) { (Test-Path $path) -and [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($path)).Contains($text) }
+function SameFile($a, $b) { (Test-Path $a) -and (Test-Path $b) -and (Get-FileHash $a).Hash -eq (Get-FileHash $b).Hash }
+# Car mods in ExtraOptions' override folders ship a full zipmanifest.xml that the game reads instead of media's,
+# so its entries for the zips rebuilt here get the same directory positions (unless the mod has its own copy of that zip).
+function SyncOverrideManifests {
+  $ours = [IO.File]::ReadAllText((Join-Path $media 'zipmanifest.xml'))
+  foreach ($dir in 'mediaoverride', 'mediapc') {
+    $file = Join-Path (Split-Path $media) "$dir\zipmanifest.xml"
+    if (-not (Test-Path $file)) { continue }
+    $text = [IO.File]::ReadAllText($file); $before = $text
+    foreach ($z in $zips) {
+      if (Test-Path (Join-Path (Split-Path $file) $z)) { continue }
+      $rx = '(?<=path="' + [regex]::Escape('game:\media\' + $z.ToLower()) + '"[^>]*?)dirstart="\d+" dirsize="\d+"'
+      $m = [regex]::Match($ours, $rx)
+      if ($m.Success) { $text = [regex]::Replace($text, $rx, $m.Value) }
+    }
+    if ($text -ne $before) { [IO.File]::WriteAllText($file, $text, (New-Object Text.UTF8Encoding($true))); "  $dir\zipmanifest.xml: kept in step with this tool's zips" }
+  }
+}
 # the stock ExtraOptions refuses to load with settings it doesn't know, so these sections go when it comes back
 function StripForkSettings($text) { [regex]::Replace($text, '(?ms)^\[(Keyboard|Cockpit|Traffic)\]\r?\n.*?(?=^\[|\z)', '').TrimEnd() + "`n" }
 if ($Restore) {
   foreach ($f in $zips + $loose + $tracks + 'zipmanifest.xml') { Copy-Item -Force (Join-Path $backup $f) (Join-Path $media $f) }
-  if ($eoTarget -and (Test-Path $eoBackup)) {
-    Copy-Item -Force $eoBackup $eoTarget
-    if (Test-Path $eoIni) { [IO.File]::WriteAllText($eoIni, (StripForkSettings ([IO.File]::ReadAllText($eoIni))), (New-Object Text.UTF8Encoding($false))) }
-    '  ExtraOptions: original DLL restored'
+  SyncOverrideManifests
+  $tlsBackup = Join-Path $eoBackups 'azimuth-tls.dll'
+  if ($tlsTarget -and (Test-Path $tlsBackup) -and -not (FileHas $tlsTarget 'fh2online')) { Copy-Item -Force $tlsBackup $tlsTarget; '  ExtraOptions: original data\bin helper restored' }
+  if (Test-Path (Join-Path $eoBackups 'winmm.dll')) { Copy-Item -Force (Join-Path $eoBackups 'winmm.dll') $winmm; '  ExtraOptions: original winmm.dll restored' }
+  elseif (SameFile $winmm $eoDll) { Remove-Item $winmm; '  ExtraOptions: FH2 Mods winmm.dll removed' }
+  foreach ($ini in $eoIni, (Join-Path $root 'data\bin\FH2_ExtraOptions.ini')) {
+    if (Test-Path $ini) { [IO.File]::WriteAllText($ini, (StripForkSettings ([IO.File]::ReadAllText($ini))), (New-Object Text.UTF8Encoding($false))) }
   }
   'restored original files'; return
 }
-# ForzaInfinity (online play) is an ExtraOptions build too: replacing it would switch it off, so it stays
-$infinity = $eoTarget -and [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($eoTarget)).Contains('fh2online')
-if ($infinity) { '  ForzaInfinity found: left as it is. Ghost cars, keyboard keys and sky road need the FH2 Mods ExtraOptions, so they are off (uninstall ForzaInfinity to use them). Car mods make ForzaInfinity play offline.' }
-elseif ($eoTarget -and (Test-Path $eoFork) -and (Get-FileHash $eoTarget).Hash -ne (Get-FileHash $eoFork).Hash) {
-  if (-not (Test-Path $eoBackup)) { New-Item -ItemType Directory -Force (Split-Path $eoBackup) | Out-Null; Copy-Item $eoTarget $eoBackup }
-  Copy-Item -Force $eoFork $eoTarget
-  "  ExtraOptions: installed the FH2 Mods build ($(Split-Path -Leaf $eoTarget))"
+# ForzaInfinity (online play) is an ExtraOptions build in data\bin: it stays, and our winmm.dll switches itself off next to it
+$infinity = FileHas $tlsTarget 'fh2online'
+$azimuth0910 = (Get-FileHash (Join-Path $root 'azimuth.exe')).Hash -eq '78A5F635B3241918707B5ACDDEAA96BD59CCB3819490E9218EE152497CA73639'
+$eoActive = $false
+if ($infinity) { '  ForzaInfinity found: left as it is. Ghost cars, keyboard keys and sky road are off while it is installed (uninstall ForzaInfinity to use them). Car mods make ForzaInfinity play offline.' }
+elseif (-not $azimuth0910) { '  ExtraOptions skipped: it needs Azimuth 0.9.10. Ghost cars, keyboard keys and sky road are off; everything else works.' }
+elseif ((Test-Path $winmm) -and -not (FileHas $winmm 'FH2_ExtraOptions')) { '  ExtraOptions skipped: another mod already uses winmm.dll next to azimuth.exe. Ghost cars, keyboard keys and sky road are off.' }
+else {
+  New-Item -ItemType Directory -Force $eoBackups | Out-Null
+  if ($tlsTarget -and (FileHas $tlsTarget 'FH2_ExtraOptions')) {
+    if (-not (Test-Path (Join-Path $eoBackups 'azimuth-tls.dll'))) { Copy-Item $tlsTarget (Join-Path $eoBackups 'azimuth-tls.dll') }
+    Copy-Item -Force (Join-Path $PSScriptRoot 'ExtraOptions\azimuth-tls.stock.dll') $tlsTarget
+    "  ExtraOptions: the old ExtraOptions in data\bin was replaced by Azimuth's own helper (backed up)"
+  }
+  if (-not (SameFile $winmm $eoDll)) {
+    if ((Test-Path $winmm) -and -not (Test-Path (Join-Path $eoBackups 'winmm.dll'))) { Copy-Item $winmm (Join-Path $eoBackups 'winmm.dll') }
+    Copy-Item -Force $eoDll $winmm
+    '  ExtraOptions: installed the FH2 Mods build (winmm.dll)'
+  }
+  if (-not (Test-Path $eoIni)) { Copy-Item (Join-Path $PSScriptRoot 'ExtraOptions\FH2_ExtraOptions.ini') $eoIni }
+  $gamerpic = Join-Path $root 'data\bin\Gamerpic.png'
+  if (-not (Test-Path (Join-Path $root 'Gamerpic.png')) -and (Test-Path $gamerpic)) { Copy-Item $gamerpic $root }
+  $eoActive = $true
 }
-$eoActive = $eoTarget -and (Test-Path $eoFork) -and (Get-FileHash $eoTarget).Hash -eq (Get-FileHash $eoFork).Hash
-if (-not $eoTarget) { '  ExtraOptions not found in data\bin: ghost cars and keyboard keys need it (install ExtraOptions, then Apply again)' }
 
 # ExtraOptions finds the game through [launcher] game_folder, which Azimuth 0.9.9 no longer writes (it may drop it again on a settings change).
 if ($azText -match '(?m)^\[launcher\]' -and $azText -notmatch '(?m)^game_folder=') { [IO.File]::WriteAllText($azIni, ($azText -replace '(?m)^\[launcher\]\r?\n', "[launcher]`r`ngame_folder=$gameFolder`r`n"), [Text.Encoding]::Unicode); '  azimuth.ini: game_folder added back for ExtraOptions' }
@@ -177,9 +215,10 @@ if ($eoActive -and (Test-Path $eoIni)) {
   $ghost = "GhostCars=$([int][bool]$s.GhostTraffic)"
   $eo = if ($eo -match '(?m)^GhostCars=') { $eo -replace '(?m)^GhostCars=\d*', $ghost }
         else { $eo.TrimEnd() + "`n`n[Traffic]`n; drive through every other car; they stay visible`n$ghost`n" }
+  if ($eo -notmatch '(?m)^\[Keyboard\]') { $eo = $eo.TrimEnd() + "`n`n[Keyboard]`n; a letter, a digit, F1-F12, or off`nHeadlights=L`nIndicatorLeft=Q`nIndicatorRight=E`nHazards=H`n" }
   [IO.File]::WriteAllText($eoIni, $eo, (New-Object Text.UTF8Encoding($false)))
   "  FH2_ExtraOptions.ini: $ghost"
-} elseif ($s.GhostTraffic) { '  Ghost cars skipped: it needs ExtraOptions in data\bin' }
+} elseif ($s.GhostTraffic) { '  Ghost cars skipped: it needs the FH2 Mods ExtraOptions' }
 # crashes and breakables stop turning the car: hit forces push it but no longer spin, flip or tumble it,
 # including the game's extra random spin on big impacts (HackLargeImpactLowAngVelCollTorqueScale)
 if ($s.NoCrashSpin) {
@@ -311,4 +350,5 @@ foreach ($f in $tracks) {
 # everything built without errors: write it all at once
 foreach ($zipName in $outputs.Keys) { [IO.File]::WriteAllBytes((Join-Path $media $zipName), $outputs[$zipName]) }
 [IO.File]::WriteAllText((Join-Path $media 'zipmanifest.xml'), $manifest, (New-Object Text.UTF8Encoding($true)))
+SyncOverrideManifests
 'applied'

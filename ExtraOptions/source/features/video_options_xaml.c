@@ -176,14 +176,24 @@ static void append_fov_resources(XamlBuffer *buffer, const VideoOptionsText *tex
     }
 }
 
-static const char *const settings_properties[] = {"RealtimeShadows",          NULL,
-                                                  "PhotoSamplesPreset",       NULL,
-                                                  "MinimapOrientation",       "AutodriveCinematic",
-                                                  "SkipChampionshipDialogue", "SpawnLocation",
-                                                  "CarChangePosition"};
-static const char *const settings_collections[] = {
-    "ToggleChoices", NULL,           "PhotoChoices",      NULL, "MinimapChoices", "ToggleChoices",
-    "ToggleChoices", "SpawnChoices", "CarPositionChoices"};
+static const char *const settings_properties[] = {"RealtimeShadows",
+                                                  NULL,
+                                                  "PhotoSamplesPreset",
+                                                  NULL,
+                                                  "MinimapOrientation",
+                                                  "AutodriveCinematic",
+                                                  "SkipChampionshipDialogue",
+                                                  "SpawnLocation",
+                                                  "CarChangePosition",
+                                                  "LiveryResolution",
+                                                  "LiveryMsaa",
+                                                  "LiverySampling"};
+static const char *const settings_collections[] = {"ShadowChoices",      NULL,
+                                                   "PhotoChoices",       NULL,
+                                                   "MinimapChoices",     "ToggleChoices",
+                                                   "ToggleChoices",      "SpawnChoices",
+                                                   "CarPositionChoices", "LiveryResolutionChoices",
+                                                   "LiveryMsaaChoices",  "LiverySamplingChoices"};
 
 static void append_settings_resources(XamlBuffer *buffer, const VideoOptionsText *text,
                                       unsigned first, unsigned end) {
@@ -309,9 +319,11 @@ size_t video_options_extend_xaml(unsigned char *game_image, const char *text, si
     for (size_t index = 0; index < length && buffer.valid;) {
         if (text + index == resources) {
             append_settings_resources(&buffer, localized, 0, 4);
+            append_settings_resources(&buffer, localized, 9, 12);
         }
         if (text + index == rows) {
             append_settings_rows(&buffer, localized, 0, 4);
+            append_settings_rows(&buffer, localized, 9, 12);
         }
         if (text + index == preview) {
             append_text(&buffer, "<StackPanel Width=\"806\" HorizontalAlignment=\"Center\" "
@@ -324,7 +336,7 @@ size_t video_options_extend_xaml(unsigned char *game_image, const char *text, si
             append_text(&buffer, "Height=\"100\"");
             index += sizeof("Height=\"100\"") - 1;
         } else if (text + index == height) {
-            append_text(&buffer, "Height=\"220\"");
+            append_text(&buffer, "Height=\"275\"");
             index += 12;
         } else {
             append_bytes(&buffer, text + index, 1);

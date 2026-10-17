@@ -3,7 +3,7 @@
 
 #include "extra_options.h"
 
-typedef enum { SETTING_BOOLEAN, SETTING_MSAA, SETTING_PHOTO_SAMPLES, SETTING_KEY, SETTING_DEGREES } SettingType;
+typedef enum { SETTING_BOOLEAN, SETTING_MSAA, SETTING_PHOTO_SAMPLES, SETTING_KEY } SettingType;
 
 typedef struct {
     const char *section;

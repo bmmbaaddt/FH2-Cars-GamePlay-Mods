@@ -15,9 +15,7 @@ typedef int *(*GroupGetter)(void *);
 typedef void *(*CameraGetter)(void *);
 typedef void (*ViewFlash)(void *, int, float);
 
-static void *game_function(unsigned rva) {
-    return image + rva;
-}
+static void *game_function(unsigned rva) { return image + rva; }
 
 static uintptr_t method(void *object, unsigned slot) {
     void *vtable;
@@ -46,9 +44,7 @@ void autodrive_game_release_shared(GameShared *value) {
     *value = (GameShared){0};
 }
 
-void autodrive_game_bind(unsigned char *base) {
-    image = base;
-}
+void autodrive_game_bind(unsigned char *base) { image = base; }
 
 static int controller_status(int status) {
     static int previous = -2;
@@ -148,20 +144,22 @@ int autodrive_game_can_start(void *controller) {
     return autodrive_game_is_freeroam() && autodrive_game_has_gameplay_input(controller);
 }
 
-int autodrive_game_is_carmeet(void) {
+int autodrive_game_presentation_mode(void) {
     void *services, *manager, *head;
     if (!memory_read_pointer(image + 0x354f4f8, &services) ||
         !memory_read_pointer((unsigned char *)services + 0x50, &manager) ||
         !memory_read_pointer((unsigned char *)manager + 8, &head)) {
-        return 0;
+        return -1;
     }
     GameShared presentation = {0};
     ((SharedGetter)game_function(0xf9ae70))(manager, &presentation);
     int mode = -1;
     memory_read((unsigned char *)presentation.object + 0x3cc, &mode, sizeof(mode));
     autodrive_game_release_shared(&presentation);
-    return mode == 11;
+    return mode;
 }
+
+int autodrive_game_is_carmeet(void) { return autodrive_game_presentation_mode() == 11; }
 
 void *autodrive_game_get_car(void) {
     void *game, *car = 0;
@@ -206,6 +204,16 @@ int autodrive_game_set_ai(void *car, int enabled) {
     }
     ((DriverSetter)game_function(0xf79f10))(car, (unsigned char)enabled);
     return autodrive_game_driver_mode(car) == (enabled ? 0 : 1);
+}
+
+void autodrive_game_clear_rewind(void) {
+    void *history, *recorder;
+    if (!memory_read_pointer(image + 0x34d5710, &history) || !memory_is_writable(history, 0x128) ||
+        !memory_read_pointer(image + 0x34d5700, &recorder) || !method(recorder, 0x30) ||
+        !method(recorder, 0x68)) {
+        return;
+    }
+    ((void (*)(void *, unsigned char, unsigned char))game_function(0x99c4c0))(history, 1, 1);
 }
 
 void *autodrive_game_route(void *satnav, int *arrived) {

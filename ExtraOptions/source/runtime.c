@@ -80,7 +80,6 @@ int runtime_initialize(unsigned char *game_image, const wchar_t *executable_path
 #ifdef FH2_AZIMUTH
     if (initialized && options.enabled) {
         log_set_directory(settings_directory);
-        azimuth_apply_livery_compatibility();
         azimuth_apply_save_compatibility(options.disable_azimuth_save_checksums);
     }
 #endif

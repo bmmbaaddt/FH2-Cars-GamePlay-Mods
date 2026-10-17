@@ -20,4 +20,11 @@ jobs:
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" "FH2-Cars-GamePlay-Mods-${GITHUB_REF_NAME}.zip" --title "FH2 Cars & Gameplay Mods ${GITHUB_REF_NAME}" --notes "Extract the zip and put the **FH2 Mods** folder next to azimuth.exe. Requires Python 3 on PATH; ghost cars and the keyboard keys also need ExtraOptions installed. See the README for setup and keyboard shortcuts."
+        run: |
+          gh release create "$GITHUB_REF_NAME" "FH2-Cars-GamePlay-Mods-${GITHUB_REF_NAME}.zip" --title "FH2 Cars & Gameplay Mods ${GITHUB_REF_NAME}" --notes "Extract the zip and put the **FH2 Mods** folder next to azimuth.exe. Requires Python 3 on PATH and **Azimuth 0.9.10**. See the README for setup and keyboard shortcuts.
+
+          **What's new**
+          - Works on the new **ExtraOptions 0.2.98**: it is included as winmm.dll next to azimuth.exe, with ghost cars, keyboard keys (L/Q/E/H), Ctrl world keys and sky road added. An older ExtraOptions in data\bin is backed up and swapped for Azimuth's own helper; Restore originals puts it back.
+          - Everything new in 0.2.98 too: hold D-pad left/right for indicators, tap up for hazards, Return to Garage, aero tuning without Forza aero, new drift camera.
+          - **ForzaInfinity safe:** if ForzaInfinity (or any other ExtraOptions) is in data\bin, the FH2 Mods winmm.dll switches itself off, so the game is never patched twice and does not crash. The rest of the tool still works.
+          - Added-car mods in Mount\mediaoverride / mediapc (e.g. the Rolls-Royce Wraith) keep working: Apply keeps their zipmanifest.xml in step and the added car can be modded too."

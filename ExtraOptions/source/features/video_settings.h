@@ -38,10 +38,15 @@ enum {
     SKIP_CHAMPIONSHIP_DIALOGUE,
     SPAWN_LOCATION,
     CAR_CHANGE_POSITION,
+    LIVERY_RESOLUTION,
+    LIVERY_MSAA,
+    LIVERY_SAMPLING,
     VIDEO_SETTING_COUNT
 };
 
 enum { VIDEO_PAGE, HUD_PAGE };
+
+enum { SHADOWS_DEFAULT, SHADOWS_OFF, SHADOWS_ON };
 
 void video_settings_seed(const ModOptions *legacy);
 void video_settings_apply(ModOptions *options);
@@ -60,5 +65,7 @@ float camera_fov_degrees(unsigned view);
 float camera_fov_default(unsigned view);
 int drift_view_enabled(unsigned view);
 float drift_look_speed(unsigned view);
+float drift_sensitivity(unsigned view);
 float drift_angle(unsigned view, float angle);
+float clamp_drift_angle(unsigned view, float angle);
 #endif

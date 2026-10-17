@@ -25,9 +25,13 @@ static const PatchDefinition *const callback_patches[] = {&garage_hook_patch,
                                                           &gamerpic_hook_patch,
                                                           &treasure_map_hook_patch,
                                                           &vehicle_controls_hook_patch,
+                                                          &blinkers_radio_hook_patch,
+                                                          &hazards_photo_hook_patch,
+                                                          &hazards_photo_ready_hook_patch,
+                                                          &wheel_variants_hook_patch,
+                                                          &aero_tuning_hook_patches[0],
+                                                          &aero_tuning_hook_patches[1],
                                                           &roof_fade_hook_patch,
-                                                          &world_keys_hook_patches[0],
-                                                          &world_keys_hook_patches[1],
                                                           &autodrive_hook_patches[0],
                                                           &autodrive_hook_patches[1],
                                                           &autodrive_hook_patches[2],
@@ -44,6 +48,13 @@ static const PatchDefinition *const callback_patches[] = {&garage_hook_patch,
                                                           &minimap_hook_patch,
                                                           &media_overrides_hook_patch,
                                                           &rims_hook_patch,
+                                                          &rim_name_hook_patch,
+                                                          &rim_part_name_hook_patches[0],
+                                                          &rim_part_name_hook_patches[1],
+                                                          &return_garage_hook_patches[0],
+                                                          &return_garage_hook_patches[1],
+                                                          &return_garage_hook_patches[2],
+                                                          &return_garage_hook_patches[3],
                                                           &stock_wheels_hook_patches[0],
                                                           &stock_wheels_hook_patches[1],
                                                           &stock_wheels_hook_patches[2],
@@ -62,8 +73,8 @@ static const PatchDefinition *const callback_patches[] = {&garage_hook_patch,
                                                           &camera_fov_hook_patches[4],
                                                           &camera_fov_hook_patches[5],
                                                           &photo_sampling_patch,
-                                                          &steering_wheel_patches[0],
-                                                          &steering_wheel_patches[1],
+                                                          &world_keys_hook_patches[0],
+                                                          &world_keys_hook_patches[1],
                                                           &ghost_traffic_patches[0],
                                                           &ghost_traffic_patches[1],
                                                           &sky_road_hook_patches[0],
@@ -73,8 +84,6 @@ static const PatchDefinition *const callback_patches[] = {&garage_hook_patch,
 enum { ALL_PATCH_COUNT = FIXED_PATCH_COUNT + ARRAY_COUNT(callback_patches) };
 
 static unsigned char original_bytes[ALL_PATCH_COUNT][MAX_PATCH_SIZE];
-// Sites left exactly as loaded: photo sample density, which newer Azimuth builds set themselves.
-static unsigned char keep_loaded[ALL_PATCH_COUNT];
 
 #ifdef FH2_TWEAKS_TEST
 static int protect_failure_at = -1;
@@ -108,10 +117,10 @@ static int patch_group_enabled(PatchGroup group, const ModOptions *options) {
         case GROUP_MINIMAP:
             return 1;
         case GROUP_FRONTEND_XML:
-            return options->garage_from_pause || options->skip_ineligible_car_dialogue ||
-                   (options->spawn_at_festival && options->skip_car_meet_on_startup);
+            return 1;
         case GROUP_SUN_SHADOWS:
-            return options->smooth_sun_shadows;
+            return options->smooth_sun_shadows > 0;
+        case GROUP_AERO_TUNING:
         case GROUP_VEHICLE_CONTROLS:
             return 1;
         case GROUP_AUTODRIVE:
@@ -145,7 +154,7 @@ static int patch_group_enabled(PatchGroup group, const ModOptions *options) {
         case GROUP_LIVERY:
             return options->enable_4k_liveries;
         case GROUP_MSAA:
-            return options->enable_4k_liveries && options->livery_msaa == 4;
+            return options->livery_msaa == 4;
         case GROUP_PAUSE_GARAGE:
             return options->garage_from_pause;
     }
@@ -153,11 +162,14 @@ static int patch_group_enabled(PatchGroup group, const ModOptions *options) {
 }
 
 static const unsigned char *patch_target(const PatchDefinition *patch, const ModOptions *options) {
+    if (patch->group == GROUP_LIVERY || patch->group == GROUP_MSAA) {
+        return livery_patch_target(patch, options);
+    }
+    if (patch->group == GROUP_SUN_SHADOWS && options->smooth_sun_shadows < 0) {
+        return sun_shadows_layer_default(patch);
+    }
     if (!patch_group_enabled(patch->group, options)) {
         return patch->original;
-    }
-    if (patch->group == GROUP_LIVERY && options->livery_supersampling) {
-        return patch->supersampled;
     }
     return patch->standard;
 }
@@ -186,11 +198,6 @@ static int validate_patch_sites(PatchTransaction *transaction) {
                 recognized = 1;
                 break;
             }
-        }
-        keep_loaded[index] = !recognized && patch->group == GROUP_PHOTO_SAMPLING;
-        if (keep_loaded[index]) {
-            memory_copy(original_bytes[index], loaded_bytes, patch->size);
-            continue;
         }
         if (!recognized) {
             status_set("REFUSED: unexpected loaded bytes at ");
@@ -221,7 +228,7 @@ static size_t patch_page_capacity(const PatchTransaction *transaction) {
     size_t capacity = 0;
     for (unsigned index = 0; index < ALL_PATCH_COUNT; ++index) {
         const PatchDefinition *patch = patch_at(index);
-        if (keep_loaded[index] || memory_equal(original_bytes[index], patch_target(patch, transaction->options),
+        if (memory_equal(original_bytes[index], patch_target(patch, transaction->options),
                          patch->size)) {
             continue;
         }
@@ -254,7 +261,7 @@ static int collect_patch_pages(PatchTransaction *transaction) {
     for (unsigned index = 0; index < ALL_PATCH_COUNT; ++index) {
         const PatchDefinition *patch = patch_at(index);
         unsigned char *address = transaction->game_image + patch->rva;
-        if (keep_loaded[index] || memory_equal(original_bytes[index], patch_target(patch, transaction->options),
+        if (memory_equal(original_bytes[index], patch_target(patch, transaction->options),
                          patch->size)) {
             continue;
         }
@@ -329,7 +336,7 @@ static void write_patch_sites(const PatchTransaction *transaction, int rollback)
     for (unsigned index = 0; index < ALL_PATCH_COUNT; ++index) {
         const PatchDefinition *patch = patch_at(index);
         const unsigned char *target = patch_target(patch, transaction->options);
-        if (keep_loaded[index] || memory_equal(original_bytes[index], target, patch->size)) {
+        if (memory_equal(original_bytes[index], target, patch->size)) {
             continue;
         }
         const unsigned char *bytes = rollback ? original_bytes[index] : target;
@@ -384,7 +391,8 @@ int patch_engine_apply(unsigned char *game_image, const ModOptions *options) {
                    "active.");
         return 1;
     }
-    if (options->photo_mode_samples < 0 || options->photo_mode_samples > 4096 ||
+    if (options->smooth_sun_shadows < -1 || options->smooth_sun_shadows > 1 ||
+        options->photo_mode_samples < 0 || options->photo_mode_samples > 4096 ||
         (options->photo_mode_samples > 0 && options->photo_mode_samples < 16)) {
         status_set("REFUSED: invalid graphics selection. No patches applied.");
         return 0;
@@ -395,15 +403,18 @@ int patch_engine_apply(unsigned char *game_image, const ModOptions *options) {
     gamerpic_prepare_hook(game_image);
     treasure_map_prepare_hook(game_image);
     minimap_prepare_hook(game_image);
-    photo_sampling_prepare_patch(options);
-    steering_wheel_prepare_patch(game_image, options);
-    ghost_traffic_prepare_patch(options);
-    sky_road_prepare_hook(game_image);
+    photo_sampling_prepare_patch(game_image, options);
+    sun_shadows_prepare_defaults(game_image);
+    livery_prepare_defaults(game_image);
     camera_fov_prepare_hooks(game_image);
     rims_prepare_hook(game_image);
+    aero_tuning_prepare_hooks(game_image);
+    return_garage_prepare_hooks(game_image);
     drift_camera_prepare_hook(game_image);
     video_options_prepare_hooks(game_image);
     media_overrides_prepare_hook(game_image);
+    ghost_traffic_prepare_patch(options);
+    sky_road_prepare_hook(game_image);
     autodrive_prepare_hooks(game_image, options);
 
     PatchTransaction transaction;

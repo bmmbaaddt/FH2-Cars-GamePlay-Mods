@@ -98,8 +98,8 @@ else {
 
 # ExtraOptions
 Say ''
-Say 'data\bin:' 'White'
-Get-ChildItem (Join-Path $root 'data\bin') -Filter '*.dll*' -ErrorAction SilentlyContinue | ForEach-Object {
+Say 'data\bin, and winmm.dll next to azimuth.exe:' 'White'
+@(Get-ChildItem (Join-Path $root 'data\bin') -Filter '*.dll*' -ErrorAction SilentlyContinue) + @(Get-Item (Join-Path $root 'winmm.dll') -ErrorAction SilentlyContinue) | ForEach-Object {
   $fork = [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($_.FullName)).Contains('FH2_ExtraOptions')
   Say ('   {0,-32} {1,9} bytes  {2:yyyy-MM-dd HH:mm}{3}' -f $_.Name, $_.Length, $_.LastWriteTime, $(if ($fork) { '  (ExtraOptions)' }))
 }

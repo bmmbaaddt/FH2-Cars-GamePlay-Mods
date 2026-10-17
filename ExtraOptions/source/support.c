@@ -89,10 +89,33 @@ const char *text_find_unique(const char *text, size_t length, const char *needle
     return found;
 }
 
+static int memory_read_fault(EXCEPTION_POINTERS *exception) {
+    const EXCEPTION_RECORD *record = exception->ExceptionRecord;
+    DWORD code = record->ExceptionCode;
+    if (code == EXCEPTION_GUARD_PAGE && record->NumberParameters >= 2) {
+        void *fault_address = (void *)record->ExceptionInformation[1];
+        MEMORY_BASIC_INFORMATION region;
+        DWORD previous;
+        if (VirtualQuery(fault_address, &region, sizeof(region)) == sizeof(region)) {
+            VirtualProtect(fault_address, 1, region.Protect | PAGE_GUARD, &previous);
+        }
+    }
+    return code == EXCEPTION_ACCESS_VIOLATION || code == EXCEPTION_IN_PAGE_ERROR ||
+                   code == EXCEPTION_GUARD_PAGE
+               ? EXCEPTION_EXECUTE_HANDLER
+               : EXCEPTION_CONTINUE_SEARCH;
+}
+
 int memory_read(const void *address, void *out, size_t size) {
-    SIZE_T count = 0;
-    return address && ReadProcessMemory(GetCurrentProcess(), address, out, size, &count) &&
-           count == size;
+    if (!address || !out || size > UINTPTR_MAX - (uintptr_t)address) {
+        return 0;
+    }
+    __try {
+        memory_copy(out, address, size);
+        return 1;
+    } __except (memory_read_fault(GetExceptionInformation())) {
+        return 0;
+    }
 }
 
 int memory_read_pointer(const void *address, void **value) {
@@ -157,3 +180,24 @@ int path_join(wchar_t *output, const wchar_t *directory, const wchar_t *name) {
     }
     return 1;
 }
+
+#ifdef FH2_TWEAKS_TEST
+__declspec(dllexport) int Fh2TestMemoryRead(const void *address, void *output, size_t size) {
+    return memory_read(address, output, size);
+}
+
+__declspec(dllexport) uint64_t Fh2TestMemoryBenchmark(const void *address, unsigned count,
+                                                      int process_api) {
+    uint64_t sum = 0, value = 0;
+    for (unsigned index = 0; index < count; ++index) {
+        SIZE_T copied;
+        int read = process_api ? ReadProcessMemory(GetCurrentProcess(), address, &value,
+                                                   sizeof(value), &copied)
+                               : memory_read(address, &value, sizeof(value));
+        if (read) {
+            sum += value;
+        }
+    }
+    return sum;
+}
+#endif

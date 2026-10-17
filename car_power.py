@@ -3,7 +3,7 @@
 #   python car_power.py            apply cars.json
 #   python car_power.py --list     print every drivable car as JSON (for the settings window)
 #   python car_power.py --restore  put the original database back
-import glob, json, os, re, shutil, sqlite3, struct, subprocess, sys, tempfile
+import glob, hashlib, json, os, re, shutil, sqlite3, struct, subprocess, sys, tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)   # this folder sits next to azimuth.exe
@@ -34,6 +34,21 @@ if '--list' not in sys.argv:
     running = subprocess.run(['powershell', '-NoProfile', '-Command', '(Get-Process azimuth -ErrorAction SilentlyContinue).Path'], capture_output=True, text=True).stdout
     if any(os.path.normcase(p).startswith(os.path.normcase(ROOT + os.sep)) for p in running.splitlines()): sys.exit('close the game first')
 if not os.path.exists(ORIG): os.makedirs(os.path.dirname(ORIG), exist_ok=True); shutil.copy2(DB, ORIG)
+
+# A car mod in ExtraOptions' override folders (mediaoverride > mediapc > media) ships its own database, which the game
+# reads instead: car mods go into that copy, rebuilt from a backup of it. The backup is taken again whenever the
+# copy is neither that backup nor what this script last wrote, i.e. the mod was installed or updated.
+WRITTEN = None
+def sha(path): return hashlib.sha256(open(path, 'rb').read()).hexdigest()
+for folder in ('mediaoverride', 'mediapc'):
+    override = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(DB))), folder, 'stripped', 'gamedbRC.slt')
+    if os.path.exists(override):
+        if '--list' not in sys.argv: shutil.copy2(ORIG, DB)   # the masked media copy goes back to stock
+        DB, ORIG, WRITTEN = override, os.path.join(ROOT, 'backup_original', folder, 'gamedbRC.slt'), os.path.join(ROOT, 'backup_original', folder, 'gamedbRC.written')
+        current = sha(DB)
+        if not os.path.exists(ORIG) or current not in (sha(ORIG), open(WRITTEN).read() if os.path.exists(WRITTEN) else ''):
+            os.makedirs(os.path.dirname(ORIG), exist_ok=True); shutil.copy2(DB, ORIG)
+        break
 
 if '--list' in sys.argv:
     g = sqlite3.connect(f'file:{ORIG}?mode=ro', uri=True)
@@ -109,4 +124,5 @@ for n, (cid, m) in enumerate(cars.items()):
 db.commit()
 assert db.execute('pragma integrity_check').fetchone()[0] == 'ok'
 db.close()
+if WRITTEN: open(WRITTEN, 'w').write(sha(DB))
 print(f'applied to {len(cars)} car(s)')

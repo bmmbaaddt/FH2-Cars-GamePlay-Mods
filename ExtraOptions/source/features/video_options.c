@@ -7,7 +7,7 @@
 
 #define RESOURCE_THUNK_RVA 0x13fe354u
 #define RESET_SLOT_RVA (0x2e60370u + 0x590u)
-#define XAML_LIMIT 65536u
+#define XAML_LIMIT 131072u
 
 enum {
     NATIVE_DELETE_OBJECT = 0x257730,
@@ -80,6 +80,10 @@ enum {
     CHOICES_MINIMAP,
     CHOICES_SPAWN,
     CHOICES_CAR_POSITION,
+    CHOICES_SHADOWS,
+    CHOICES_LIVERY_RESOLUTION,
+    CHOICES_LIVERY_MSAA,
+    CHOICES_LIVERY_SAMPLING,
     CHOICE_COLLECTION_COUNT
 };
 
@@ -94,7 +98,7 @@ static PropertyChanged property_changed;
 static NativeProperty properties[VIDEO_SETTING_COUNT + CHOICE_COLLECTION_COUNT];
 static NativePropertyLink links[2][VIDEO_SETTING_COUNT + CHOICE_COLLECTION_COUNT];
 static void *choices[CHOICE_COLLECTION_COUNT];
-static const unsigned choice_counts[] = {3, 2, 6, 2, 3, 2};
+static const unsigned choice_counts[] = {3, 2, 6, 2, 3, 2, 3, 2, 2, 2};
 static void *registered_image[2], *initialized_image;
 static void *resource_vtable[7];
 static unsigned char resource_thunk[12], reset_original[8], reset_callback[8],
@@ -126,12 +130,19 @@ static const char *const property_names[] = {"DriftMode",
                                              "SkipChampionshipDialogue",
                                              "SpawnLocation",
                                              "CarChangePosition",
+                                             "LiveryResolution",
+                                             "LiveryMsaa",
+                                             "LiverySampling",
                                              "DriftModes",
                                              "ToggleChoices",
                                              "PhotoChoices",
                                              "MinimapChoices",
                                              "SpawnChoices",
-                                             "CarPositionChoices"};
+                                             "CarPositionChoices",
+                                             "ShadowChoices",
+                                             "LiveryResolutionChoices",
+                                             "LiveryMsaaChoices",
+                                             "LiverySamplingChoices"};
 
 static void release_object(void *object) {
     if (object && InterlockedDecrement((volatile LONG *)((unsigned char *)object + 0x10)) == 0) {
@@ -158,7 +169,8 @@ static void **get_value(void **output, NativeProperty *property, void *page) {
         if (*output) {
             InterlockedIncrement((volatile LONG *)((unsigned char *)*output + 0x10));
         }
-    } else if (index == DRIFT_MODE || (index >= REALTIME_SHADOWS && index < VIDEO_SETTING_COUNT)) {
+    } else if (index == DRIFT_MODE ||
+               (index >= CAMERA_SETTING_COUNT && index < VIDEO_SETTING_COUNT)) {
         int value = video_setting_get(index);
         box_int(output, &value);
     } else if (index < VIDEO_SETTING_COUNT) {
@@ -175,7 +187,7 @@ static void set_value(NativeProperty *property, void *page, void *boxed) {
         return;
     }
     int value;
-    if (index == DRIFT_MODE || index >= REALTIME_SHADOWS) {
+    if (index == DRIFT_MODE || index >= CAMERA_SETTING_COUNT) {
         if (!memory_read((unsigned char *)boxed + 0x28, &value, sizeof(value))) {
             return;
         }
@@ -210,6 +222,14 @@ static const wchar_t *choice_text(unsigned collection, unsigned index) {
             return text->choices[index];
         case CHOICES_TOGGLE:
             return text->choices[index ? 0 : 2];
+        case CHOICES_SHADOWS:
+            return index ? text->choices[index == SHADOWS_ON ? 0 : 2] : text->default_choice;
+        case CHOICES_LIVERY_RESOLUTION:
+            return index ? text->choices[0] : text->default_choice;
+        case CHOICES_LIVERY_MSAA:
+            return index ? L"4x MSAA" : text->default_choice;
+        case CHOICES_LIVERY_SAMPLING:
+            return index ? L"2x" : text->default_choice;
         case CHOICES_PHOTO:
             return index ? photo_samples[index] : text->default_choice;
         case CHOICES_MINIMAP:
@@ -270,7 +290,7 @@ static int register_properties(unsigned page) {
             continue;
         }
         unsigned factory = index >= VIDEO_SETTING_COUNT ? NATIVE_COLLECTION_PROPERTY
-                           : index == DRIFT_MODE || index >= REALTIME_SHADOWS
+                           : index == DRIFT_MODE || index >= CAMERA_SETTING_COUNT
                                ? NATIVE_INT_PROPERTY
                                : NATIVE_FLOAT_PROPERTY;
         NativeProperty *property = &properties[index];
@@ -327,8 +347,15 @@ static void *delete_resource(NativeResource *resource, unsigned flags) {
 static void **get_resource(void *reader, void **output) {
     native_resource(reader, output);
     NativeResource *original = *output;
+    const char *logo =
+        original && original->bytes && original->length > 0 &&
+                original->length < (int)(XAML_LIMIT / 2)
+            ? text_find_unique(original->bytes, (size_t)original->length,
+                               "<local:FZMaterial ImageSource=\"{Binding SelectedItem.LogoPath, "
+                               "ElementName=UpgradePartList}\"")
+            : NULL;
     if (!original || original->length <= 0 || original->length > (int)(XAML_LIMIT / 2) ||
-        !original->bytes || !video_options_is_xaml(original->bytes, original->length)) {
+        !original->bytes || (!logo && !video_options_is_xaml(original->bytes, original->length))) {
         return output;
     }
     NativeResource *replacement = allocate(sizeof(NativeResource) + XAML_LIMIT);
@@ -336,10 +363,21 @@ static void **get_resource(void *reader, void **output) {
         return output;
     }
     char *bytes = (char *)(replacement + 1);
-    size_t length =
-        video_options_extend_xaml(image, original->bytes, original->length, bytes, XAML_LIMIT);
+    size_t length;
+    if (logo) {
+        size_t at = (size_t)(logo - original->bytes) + text_length("<local:FZMaterial");
+        const char uniform[] = " Stretch=\"Uniform\"";
+        memory_copy(bytes, original->bytes, at);
+        memory_copy(bytes + at, uniform, sizeof(uniform) - 1);
+        memory_copy(bytes + at + sizeof(uniform) - 1, original->bytes + at, original->length - at);
+        length = original->length + sizeof(uniform) - 1;
+        bytes[length] = 0;
+    } else {
+        length =
+            video_options_extend_xaml(image, original->bytes, original->length, bytes, XAML_LIMIT);
+    }
     unsigned page = video_options_page(original->bytes, original->length);
-    if (!length || !register_properties(page)) {
+    if (!length || (!logo && !register_properties(page))) {
         free_object(replacement);
         log_append("SETTINGS: menu layout did not match; original menu retained.\r\n");
         return output;

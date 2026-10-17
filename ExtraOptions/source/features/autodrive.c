@@ -42,6 +42,7 @@ static void stop_driving(int flash) {
     int restored = autodrive_game_restore_camera(&drive.camera);
     autodrive_game_set_ai(drive.car, 0);
     autodrive_game_end_route(drive.tracker);
+    autodrive_game_clear_rewind();
     autodrive_game_release_car(drive.car);
     if (flash && restored) {
         autodrive_game_flash(camera);

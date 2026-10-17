@@ -19,7 +19,8 @@ typedef enum {
     FRONTEND_RESOURCE_UI_SCREENS = 1,
     FRONTEND_RESOURCE_PAUSE_FLOW = 2,
     FRONTEND_RESOURCE_RACE_ACTIVATION = 3,
-    FRONTEND_RESOURCE_FREE_ROAM_START = 4
+    FRONTEND_RESOURCE_FREE_ROAM_START = 4,
+    FRONTEND_RESOURCE_GARAGE = 5
 } FrontendResourceKind;
 
 typedef struct {
@@ -28,7 +29,7 @@ typedef struct {
 } XmlEdit;
 
 typedef struct {
-    XmlEdit edits[6];
+    XmlEdit edits[12];
     uint32_t count, length;
 } XmlPlan;
 
@@ -38,6 +39,7 @@ static GameFreeFn game_free;
 static unsigned char *garage_game_image;
 static int xml_hook_failed;
 static int garage_enabled;
+static int return_shortcut_enabled;
 static int skip_ineligible_car_dialogue;
 static int race_dialogue_failed;
 static int spawn_at_festival;
@@ -45,6 +47,7 @@ static int festival_spawn_failed;
 
 #include "festival_flow.h"
 #include "garage_flow.h"
+#include "return_garage_flow.h"
 
 /* Input disables are deque entries, not a boolean: release our entry before
    the outer pause flow releases its own. Consume the pause snapshot reference
@@ -352,7 +355,7 @@ static unsigned frontend_identify_resource(const unsigned char *resource) {
         }
     }
     const char *names[] = {"ui_screens.xml", "pause.xml", "race_trigger_activation.xml",
-                           "free_roam_start.xml"};
+                           "free_roam_start.xml", "garage.xml"};
     for (unsigned kind = 1; kind <= ARRAY_COUNT(names); ++kind) {
         const char *expected = names[kind - 1];
         size_t n = text_length(expected);
@@ -389,14 +392,52 @@ static void report_xml_failure(unsigned resource_kind, const char *garage_messag
     }
 }
 
+static int return_garage_plan(const char *source, uint32_t length, unsigned kind, XmlPlan *plan) {
+    if (!source || !length || length > XML_MAX_SIZE || kind != FRONTEND_RESOURCE_GARAGE ||
+        find_first_text(source, length, "_fh2_return_") != length) {
+        return 0;
+    }
+    *plan = (XmlPlan){0};
+    uint32_t at = find_unique_text(source, length, "</stategroup>");
+    if (at == length ||
+        find_unique_text(source, length, "<state id=\"root_festival\">") == length) {
+        return 0;
+    }
+    plan->edits[plan->count++] = (XmlEdit){at, at, return_garage_flow_xml};
+    return garage_finalize_edit_plan(plan, length);
+}
+
+static int return_garage_transform(void *game_resource, unsigned kind) {
+    if (!return_shortcut_enabled || kind != FRONTEND_RESOURCE_GARAGE) {
+        return 0;
+    }
+    unsigned char *resource = game_resource;
+    char **buffer = (char **)(resource + 0xe0);
+    uint32_t *length = (uint32_t *)(resource + 0xe8);
+    XmlPlan plan;
+    if (!return_garage_plan(*buffer, *length, kind, &plan)) {
+        return 0;
+    }
+    char *replacement = game_alloc((size_t)plan.length + 1);
+    if (!replacement) {
+        return 0;
+    }
+    frontend_apply_xml_edits(*buffer, *length, &plan, replacement);
+    game_free(*buffer);
+    *buffer = replacement;
+    *length = plan.length;
+    return 1;
+}
+
 static unsigned char frontend_parse_resource_hook(void *game_resource) {
     unsigned char *resource = game_resource;
     unsigned resource_kind = frontend_identify_resource(resource);
     int race_dialogue = resource_kind == FRONTEND_RESOURCE_RACE_ACTIVATION;
     int festival = resource_kind == FRONTEND_RESOURCE_FREE_ROAM_START;
-    int enabled = festival        ? spawn_at_festival
-                  : race_dialogue ? skip_ineligible_car_dialogue
-                                  : garage_enabled;
+    int enabled = festival                                    ? spawn_at_festival
+                  : race_dialogue                             ? skip_ineligible_car_dialogue
+                  : resource_kind == FRONTEND_RESOURCE_GARAGE ? 0
+                                                              : garage_enabled;
     int failed = __atomic_load_n(festival        ? &festival_spawn_failed
                                  : race_dialogue ? &race_dialogue_failed
                                                  : &xml_hook_failed,
@@ -452,7 +493,14 @@ static unsigned char frontend_parse_resource_hook(void *game_resource) {
             }
         }
     }
+    int return_garage_ready = return_garage_transform(resource, resource_kind);
     unsigned char result = original_xml_parse(resource);
+    if (resource_kind == FRONTEND_RESOURCE_GARAGE) {
+        return_garage_resource_parsed(resource_kind, result && return_garage_ready);
+        if (!return_garage_ready) {
+            log_append("GARAGE: return shortcut disabled; unsupported garage flow.\r\n");
+        }
+    }
     if (resource_kind && enabled && !result) {
         report_xml_failure(resource_kind,
                            "GARAGE: original XML parser failed; car reload unavailable.\r\n",
@@ -494,14 +542,24 @@ void garage_prepare_hook(unsigned char *game_image) {
 
 void garage_commit_options(const ModOptions *options) {
     garage_enabled = options->garage_from_pause;
+    return_shortcut_enabled = options->enabled;
     skip_ineligible_car_dialogue = options->skip_ineligible_car_dialogue;
     spawn_at_festival = options->spawn_at_festival && options->skip_car_meet_on_startup;
 }
 
-void *garage_callback_address(void) {
-    return (void *)frontend_parse_resource_hook;
-}
+void *garage_callback_address(void) { return (void *)frontend_parse_resource_hook; }
 #ifdef FH2_TWEAKS_TEST
+__declspec(dllexport) uint32_t Fh2TestReturnGarageXml(const char *source, uint32_t length,
+                                                      unsigned kind, char *output,
+                                                      uint32_t capacity) {
+    XmlPlan plan;
+    if (!return_garage_plan(source, length, kind, &plan) || !output || capacity <= plan.length) {
+        return 0;
+    }
+    frontend_apply_xml_edits(source, length, &plan, output);
+    return plan.length;
+}
+
 __declspec(dllexport) void *Fh2TestXmlHookAddress(void) {
     return (void *)frontend_parse_resource_hook;
 }

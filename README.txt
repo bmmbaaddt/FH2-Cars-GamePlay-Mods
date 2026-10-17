@@ -13,13 +13,15 @@ use "Restore originals" before asking them for help.
 REQUIREMENTS
 ------------
 - Windows 10 or 11 (PowerShell 5.1, already part of Windows)
-- Forza Horizon 2 for Xbox One (1.0.0.64) running on Azimuth 0.9.9 or 0.9.10
+- Forza Horizon 2 for Xbox One (1.0.0.64) running on Azimuth 0.9.10
+  (0.9.9 works too, but without ghost cars, keyboard keys and sky road)
 - Python 3 on PATH, for the car list and car mods
   (python.org, tick "Add python.exe to PATH" when installing)
-- ExtraOptions installed in data\bin, for ghost cars and the keyboard keys.
-  Apply swaps it for the included build that adds these features; your
-  original is backed up and comes back with "Restore originals".
-  Works with the LivingCockpit loader too.
+- ExtraOptions is included: Apply installs ExtraOptions 0.2.98 with this
+  tool's additions as winmm.dll next to azimuth.exe (its settings are in
+  FH2_ExtraOptions.ini beside it). An older ExtraOptions in data\bin is
+  backed up and swapped for Azimuth's own helper; "Restore originals" puts
+  everything back. Works with the LivingCockpit loader too.
 
 
 INSTALL
@@ -79,8 +81,19 @@ While driving (always on):
   Q        left indicator (press again to switch off)
   E        right indicator (press again to switch off)
   H        hazard lights (press again to switch off)
-Change them in data\bin\FH2_ExtraOptions.ini, section [Keyboard]
+Change them in FH2_ExtraOptions.ini next to azimuth.exe, section [Keyboard]
 (a letter, a digit, F1-F12, or off). FH2 has no horn.
+
+On a controller (from ExtraOptions 0.2.98):
+  hold D-pad left / right 1 second   left / right indicator (switches off
+                                     by itself after the turn)
+  tap D-pad up                       hazard lights
+  tap right stick                    headlights
+The keyboard and controller switch the same indicators.
+
+Also from ExtraOptions 0.2.98: aero tuning without Forza aero fitted,
+"Return to Garage" in the pause menu, the new drift camera, stock rims,
+and livery quality in the in-game Video settings.
 
 World keys (free roam, tick "World keys" in the window):
   Ctrl+T   midnight
@@ -100,8 +113,10 @@ World keys (free roam, tick "World keys" in the window):
 
 USING FORZAINFINITY?
 --------------------
-ForzaInfinity (online play) is its own ExtraOptions build, and Azimuth loads
-only one, so the two can't run together. Apply leaves ForzaInfinity in place.
+ForzaInfinity (online play) is its own ExtraOptions build in data\bin, and
+only one ExtraOptions can run. Apply leaves ForzaInfinity in place, and the
+FH2 Mods winmm.dll switches itself off when it finds ForzaInfinity (or any
+other ExtraOptions) in data\bin, so the game is never patched twice.
 With ForzaInfinity installed:
   Works:  traffic density, crashes, light breakables, money, skills,
           cockpit camera, world key scripts
@@ -130,6 +145,16 @@ game files and shows what is different.
   Empty car list  install Python 3 with "Add python.exe to PATH".
 
 
+ADDED CARS (mediaoverride / mediapc)
+-------------------------------------
+Car mods that add cars through ExtraOptions' Mount\mediaoverride or
+Mount\mediapc folder (for example the Rolls-Royce Wraith) ship their own
+zipmanifest.xml and game database. Apply keeps that zipmanifest.xml in step
+with this tool's zips and writes car mods into that database, so the added
+car stays, shows up in the car list and can be modded too. Install or update
+such a mod with the game closed, then press Apply again.
+
+
 FILE OVERRIDES (optional)
 -------------------------
 A file placed at "FH2 Mods\files\<zip name>\<file name>" replaces that file
@@ -147,7 +172,11 @@ car_power.py                  writes car mods into the game database
 settings.json                 the window's values
 cars.json                     per-car multipliers
 Diagnose.bat, diagnose.ps1    read-only check when Apply fails
-ExtraOptions\azimuth-tls.dll  ExtraOptions with ghost cars and keyboard keys
+ExtraOptions\winmm.dll        ExtraOptions 0.2.98 with ghost cars, keyboard
+                              keys, world keys and sky road added
+ExtraOptions\FH2_ExtraOptions.ini   its default settings
+ExtraOptions\azimuth-tls.stock.dll  Azimuth's own TLS helper, put back in
+                              data\bin in place of an older ExtraOptions
 ExtraOptions\source\          its source code
 
 

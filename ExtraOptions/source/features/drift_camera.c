@@ -22,6 +22,7 @@ enum {
     TARGET_PLAYER_CAR_VTABLE = 0x2e6b348,
     CAR_BODY_OFFSET = 0x4be8,
     NATIVE_CAR_VELOCITY = 0xf646b0,
+    NATIVE_CAR_AXIS = 0xf62220,
     WHEEL_SLIP_SLOT = 0x1d8,
     WHEEL_CONTACT_SLOT = 0x4e0,
     NATIVE_WHEEL_SLIP = 0x12c5cb0,
@@ -39,6 +40,7 @@ static const unsigned camera_vtables[] = {FOLLOW, FOLLOW_NEAR, FOLLOW_FAR, DRIVE
 
 typedef float (*ArcTangent)(float, float);
 typedef void *(*VectorGetter)(void *, float *);
+typedef void *(*AxisGetter)(void *, float *, int);
 typedef float (*WheelSlip)(void *, int);
 typedef void *(*WheelContact)(void *, int);
 typedef void (*CameraUpdate)(void *, float, unsigned char);
@@ -54,7 +56,7 @@ typedef struct {
 
 typedef struct {
     void *camera, *target;
-    float angle, angular_speed;
+    float angle, angular_speed, body_heading, slide;
 } DriftOffset;
 
 typedef struct {
@@ -94,7 +96,7 @@ static CameraView camera_type(void *camera) {
     return 0;
 }
 
-static void *car_body(void *camera, float velocity[4]) {
+static void *car_body(void *camera, float velocity[4], float axis[4]) {
     void *target, *vtable, *body, *getter;
     if (!memory_read_pointer((unsigned char *)camera + 8, &target)) {
         return 0;
@@ -111,16 +113,28 @@ static void *car_body(void *camera, float velocity[4]) {
             continue;
         }
         if ((vtable != image + TARGET_CAR_VTABLE && vtable != image + TARGET_PLAYER_CAR_VTABLE) ||
-            !memory_read_pointer((unsigned char *)target + CAR_BODY_OFFSET, &body) ||
+            !memory_read_pointer((unsigned char *)target + CAR_BODY_OFFSET, &body) || !body ||
             !memory_read_pointer((unsigned char *)vtable + 0x10, &getter) ||
             getter != image + NATIVE_CAR_VELOCITY) {
             return 0;
         }
         ((VectorGetter)getter)(target, velocity);
-        return float_is_finite(velocity[0]) && float_is_finite(velocity[1]) &&
-                       float_is_finite(velocity[2])
-                   ? body
-                   : 0;
+        if (!float_is_finite(velocity[0]) || !float_is_finite(velocity[1]) ||
+            !float_is_finite(velocity[2])) {
+            return NULL;
+        }
+        if (axis) {
+            if (!memory_read_pointer((unsigned char *)vtable + 0x20, &getter) ||
+                getter != image + NATIVE_CAR_AXIS) {
+                return NULL;
+            }
+            ((AxisGetter)getter)(target, axis, 2);
+            if (!float_is_finite(axis[0]) || !float_is_finite(axis[1]) ||
+                !float_is_finite(axis[2])) {
+                return NULL;
+            }
+        }
+        return body;
     }
     return 0;
 }
@@ -174,6 +188,31 @@ static float heading_difference(float heading, float reference) {
     return difference;
 }
 
+static float momentum_weight(float body_z, float body_x, const float velocity[4],
+                             float direction[2]) {
+    float speed_squared = velocity[0] * velocity[0] + velocity[2] * velocity[2];
+    float body_squared = body_x * body_x + body_z * body_z;
+    if (!(speed_squared > 4 && speed_squared < 1000000 && body_squared > 0.5f &&
+          body_squared < 1.5f)) {
+        return 0;
+    }
+    float inverse_speed = 1 / _mm_cvtss_f32(_mm_sqrt_ss(_mm_set_ss(speed_squared)));
+    float x = -velocity[0] * inverse_speed;
+    float z = -velocity[2] * inverse_speed;
+    float alignment = x * body_x + z * body_z;
+    if (alignment <= -0.5f) {
+        return 0;
+    }
+    float blend = speed_squared >= 16 ? 1 : (speed_squared - 4) / 12;
+    blend = blend * blend * (3 - 2 * blend);
+    if (alignment < 0) {
+        blend *= (alignment + 0.5f) * 2;
+    }
+    direction[0] = x;
+    direction[1] = z;
+    return blend;
+}
+
 static float momentum_heading(float body_z, float body_x, void *camera) {
     _Alignas(16) float velocity[4] = {0};
     void *body;
@@ -181,38 +220,25 @@ static float momentum_heading(float body_z, float body_x, void *camera) {
     float body_heading = native_atan2(body_z, body_x);
     float fallback = view >= CAMERA_DRIVER ? 0 : body_heading;
     if (!float_is_finite(body_x) || !float_is_finite(body_z) || !view ||
-        !drift_view_enabled(view) || !(body = car_body(camera, velocity))) {
+        !drift_view_enabled(view) || !(body = car_body(camera, velocity, NULL))) {
         return fallback;
     }
-    float slide = slide_weight(body);
-    if (!slide) {
+    float direction[2];
+    float blend = slide_weight(body) * momentum_weight(body_z, body_x, velocity, direction);
+    if (!blend) {
         return fallback;
     }
-    float speed_squared = velocity[0] * velocity[0] + velocity[2] * velocity[2];
-    float body_squared = body_x * body_x + body_z * body_z;
-    if (!(speed_squared > 4 && speed_squared < 1000000 && body_squared > 0.5f &&
-          body_squared < 1.5f)) {
-        return fallback;
-    }
-    float inverse_speed = 1 / _mm_cvtss_f32(_mm_sqrt_ss(_mm_set_ss(speed_squared)));
-    float x = -velocity[0] * inverse_speed;
-    float z = -velocity[2] * inverse_speed;
-    float alignment = x * body_x + z * body_z;
-    if (alignment <= -0.5f) {
-        return fallback;
-    }
-    float blend = speed_squared >= 16 ? 1 : (speed_squared - 4) / 12;
-    blend = blend * blend * (3 - 2 * blend) * slide;
-    if (alignment < 0) {
-        blend *= (alignment + 0.5f) * 2;
-    }
-    float heading = native_atan2(body_z + (z - body_z) * blend, body_x + (x - body_x) * blend);
+    float heading = native_atan2(body_z + (direction[1] - body_z) * blend,
+                                 body_x + (direction[0] - body_x) * blend);
     float offset = drift_angle(view, heading_difference(heading, body_heading));
     return view >= CAMERA_DRIVER ? offset : body_heading + offset;
 }
 
 static DriftSpring drift_spring_tuning(CameraView view) {
     float look_speed = drift_look_speed(view);
+    if (view >= CAMERA_DRIVER) {
+        return (DriftSpring){look_speed * look_speed / 4.5f, 2 * look_speed / 4.4f};
+    }
     float damping_scale = _mm_cvtss_f32(_mm_sqrt_ss(_mm_set_ss(look_speed)));
     return (DriftSpring){0.55f * look_speed, 0.5f * damping_scale};
 }
@@ -223,25 +249,30 @@ static void tune_drift_spring(float spring[12], float slide, const DriftSpring *
     spring[10] *= 1 - slide;
 }
 
+static float recover_slide(float previous, float slide, float dt) {
+    if (slide < previous && dt > 0 && dt < 0.25f) {
+        float decay = dt * 4 / (1 + dt * 4);
+        slide = previous + (slide - previous) * decay;
+        if (slide < 0.0001f) {
+            slide = 0;
+        }
+    }
+    return slide;
+}
+
 static void update_chase_heading(void *camera, float dt, unsigned char reset) {
     CameraView view = camera_type(camera);
     HeadingFrame frame;
     float spring[12];
     _Alignas(16) float velocity[4];
-    float slide = drift_view_enabled(view) ? slide_weight(car_body(camera, velocity)) : 0;
+    float slide = drift_view_enabled(view) ? slide_weight(car_body(camera, velocity, NULL)) : 0;
     if (view && view <= CAMERA_CHASE_FAR && float_is_finite(dt) && dt > 0 && dt < 0.25f) {
         unsigned index = view - CAMERA_CHASE;
         if (chase_cameras[index] != camera || reset) {
             chase_cameras[index] = camera;
             chase_slide_blend[index] = slide;
         }
-        if (slide < chase_slide_blend[index]) {
-            float decay = dt * 4 / (1 + dt * 4);
-            slide = chase_slide_blend[index] + (slide - chase_slide_blend[index]) * decay;
-            if (slide < 0.0001f) {
-                slide = 0;
-            }
-        }
+        slide = recover_slide(chase_slide_blend[index], slide, dt);
         chase_slide_blend[index] = slide;
     }
     void *settings;
@@ -266,15 +297,19 @@ static void update_chase_heading(void *camera, float dt, unsigned char reset) {
 static void update_mounted_camera(void *camera, float dt, unsigned char reset) {
     native_attached_update(camera, dt, reset);
     CameraView view = camera_type(camera);
-    _Alignas(16) float forward[4], velocity[4];
+    _Alignas(16) float forward[4], velocity[4], axis[4];
     void *target;
     if (view < CAMERA_DRIVER || view > CAMERA_BUMPER) {
         return;
     }
     DriftOffset *state = &mounted_offsets[view - CAMERA_DRIVER];
-    void *body = car_body(camera, velocity);
-    float slide = drift_view_enabled(view) ? slide_weight(body) : 0;
-    if (!float_is_finite(dt) || !body ||
+    void *body = car_body(camera, velocity, axis);
+    float direction[2];
+    float slide =
+        body && drift_view_enabled(view)
+            ? slide_weight(body) * momentum_weight(-axis[2], -axis[0], velocity, direction)
+            : 0;
+    if (!float_is_finite(dt) || dt < 0 || dt >= 0.25f || !body ||
         !memory_read((unsigned char *)camera + CAMERA_HEADING_OFFSET, forward, sizeof(forward)) ||
         !memory_read_pointer((unsigned char *)camera + 8, &target)) {
         *state = (DriftOffset){0};
@@ -291,13 +326,19 @@ static void update_mounted_camera(void *camera, float dt, unsigned char reset) {
         return;
     }
     int initialize = state->camera != camera || state->target != target;
+    float body_heading = native_atan2(-axis[2], -axis[0]);
     if (initialize) {
-        state->camera = camera;
-        state->target = target;
-        state->angle = 0;
-        state->angular_speed = 0;
+        *state = (DriftOffset){
+            .camera = camera, .target = target, .body_heading = body_heading, .slide = slide};
         return;
     }
+    state->slide = recover_slide(state->slide, slide, dt);
+    if (drift_view_enabled(view) && clamp_drift_angle(view, 1) > 0) {
+        float body_turn = heading_difference(body_heading, state->body_heading);
+        float correction = body_turn * state->slide * drift_sensitivity(view);
+        state->angle = heading_difference(state->angle - correction, 0);
+    }
+    state->body_heading = body_heading;
     float spring[12] = {0, 0, 0, 0, 0, 0, 0, 0, 4.5f, 4.4f, 0.67f, 2};
     DriftSpring tuning = drift_spring_tuning(view);
     tune_drift_spring(spring, 1, &tuning);
@@ -307,14 +348,16 @@ static void update_mounted_camera(void *camera, float dt, unsigned char reset) {
     frame.spring = spring;
     frame.yaw = state->angle;
     frame.yaw_speed = state->angular_speed;
-    // Integrate only the drift offset; crossing the grip threshold targets zero
-    // without a reset.
+    // Rebase the offset as the body turns so the spring smooths world heading.
     native_heading_update(&frame, dt, 0);
     if (!float_is_finite(frame.yaw) || !float_is_finite(frame.yaw_speed)) {
         *state = (DriftOffset){0};
         return;
     }
-    state->angle = frame.yaw;
+    state->angle = clamp_drift_angle(view, frame.yaw);
+    if ((frame.yaw - state->angle) * frame.yaw_speed > 0) {
+        frame.yaw_speed = 0;
+    }
     state->angular_speed = frame.yaw_speed;
     float sine, cosine;
     sin_cos(-state->angle, &sine, &cosine);

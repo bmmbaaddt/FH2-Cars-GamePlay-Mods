@@ -3,6 +3,8 @@
 #include "support.h"
 
 static const VideoOptionsText english = {
+    .garage_label = L"Return to Garage",
+    .garage_question = L"Return to the festival garage on the current map?",
     .camera = "Drift Camera",
     .driver = "Driver",
     .parameters = {"Sensitivity", "Look Speed", "Range"},
@@ -23,12 +25,14 @@ static const VideoOptionsText english = {
     .fov_description = "Set the vertical field of view for the given camera in degrees.",
     .settings_names = {"Real-time Shadows", "", "Photo Mode Samples", "", "Minimap Orientation",
                        "Autodrive Cinematic Camera", "Skip Championship Dialogue", "Spawn Location",
-                       "Change Car Position"},
+                       "Change Car Position", "4K Resolution Liveries", "Enhanced Livery MSAA",
+                       "Enchanged Livery Sampling"},
     .settings_descriptions =
-        {"Update sun shadows every frame. Increases GPU load. Restart required.", "",
-         "Set the photo mode samples for depth of field and motion blur. Default "
-         "uses 129 samples. "
-         "Higher values increase capture time. Restart required.",
+        {"Control smooth sun-shadow updates. Default uses the current translation layer's setting. "
+         "Restart required.",
+         "",
+         "Set photo mode samples. Default uses the current translation layer's setting. Restart "
+         "required.",
          "", "Choose whether the minimap follows the car or the camera.",
          "Use cinematic cameras during Autodrive.",
          "Skip the forced dialogue when entering a championship race in an "
@@ -41,13 +45,18 @@ static const VideoOptionsText english = {
          "changes.",
          "Where the new car should be when you change cars in the open world. The "
          "latter option will "
-         "leave you exactly where the old car was."},
+         "leave you exactly where the old car was.",
+         "Use 4K liveries. Default follows the translation layer. Restart to apply.",
+         "Use 4x livery MSAA. Default follows the translation layer. Restart to apply.",
+         "Use 2x livery sampling. Default follows the translation layer. Restart to apply."},
     .default_choice = L"Default",
     .minimap_choices = {L"Follow Car", L"Follow Camera"},
     .spawn_choices = {L"Car Meet Entrance", L"Festival Site"},
     .car_position_choices = {L"Nearest Road", L"Same Location"}};
 
 static const VideoOptionsText brazilian = {
+    .garage_label = L"Voltar à garagem",
+    .garage_question = L"Voltar à garagem do festival no mapa atual?",
     .camera = "Câmera de Drift",
     .driver = "Piloto",
     .parameters = {"Sensibilidade", "Velocidade de movimento", "Alcance"},
@@ -69,16 +78,14 @@ static const VideoOptionsText brazilian = {
     .settings_names = {"Sombras em tempo real", "", "Amostras do modo foto", "",
                        "Orientação do minimapa", "Câmera cinematográfica do Autodrive",
                        "Ignorar diálogo de campeonato", "Local de início",
-                       "Posição ao trocar de carro"},
+                       "Posição ao trocar de carro", "Pinturas em resolução 4K",
+                       "MSAA aprimorado das pinturas", "Amostragem aprimorada das pinturas"},
     .settings_descriptions =
-        {"Atualiza as sombras do sol a cada quadro. Aumenta a carga da GPU. "
-         "Reinicie o jogo para "
-         "aplicar.",
+        {"Controla a suavidade das sombras. Padrão usa a configuração da camada de tradução atual. "
+         "Reinicie para aplicar.",
          "",
-         "Define as amostras do modo foto para profundidade de campo e desfoque de "
-         "movimento. Padrão "
-         "usa 129 amostras. Valores maiores aumentam o tempo de captura. Reinicie "
-         "o jogo para aplicar.",
+         "Define as amostras do modo foto. Padrão usa a configuração da camada de tradução atual. "
+         "Reinicie para aplicar.",
          "", "Escolhe se o minimapa acompanha o carro ou a câmera.",
          "Usa câmeras cinematográficas durante o Autodrive.",
          "Ignora o diálogo obrigatório ao entrar em uma corrida de campeonato com "
@@ -91,13 +98,19 @@ static const VideoOptionsText brazilian = {
          "as alterações.",
          "Onde o novo carro deve ficar quando você troca de carro no mundo aberto. "
          "A segunda opção "
-         "deixa você exatamente onde o carro anterior estava."},
+         "deixa você exatamente onde o carro anterior estava.",
+         "Usa pinturas em 4K. Padrão segue a camada de tradução. Reinicie para aplicar.",
+         "Usa MSAA 4x nas pinturas. Padrão segue a camada de tradução. Reinicie para aplicar.",
+         "Usa amostragem 2x nas pinturas. Padrão segue a camada de tradução. Reinicie para "
+         "aplicar."},
     .default_choice = L"Padrão",
     .minimap_choices = {L"Seguir carro", L"Seguir câmera"},
     .spawn_choices = {L"Entrada do encontro de carros", L"Local do festival"},
     .car_position_choices = {L"Estrada mais próxima", L"Mesmo local"}};
 
 static const VideoOptionsText german = {
+    .garage_label = L"Zur Garage zurückkehren",
+    .garage_question = L"Zur Festivalgarage auf der aktuellen Karte zurückkehren?",
     .camera = "Driftkamera",
     .driver = "Fahrer",
     .parameters = {"Empfindlichkeit", "Blickgeschwindigkeit", "Bereich"},
@@ -119,15 +132,14 @@ static const VideoOptionsText german = {
     .fov_description = "Stelle das vertikale Sichtfeld der jeweiligen Kamera in Grad ein.",
     .settings_names = {"Echtzeitschatten", "", "Fotomodus-Samples", "", "Minikartenausrichtung",
                        "Autodrive-Filmkamera", "Meisterschaftsdialog überspringen", "Startposition",
-                       "Position beim Autowechsel"},
+                       "Position beim Autowechsel", "Lackierungen in 4K",
+                       "Verbessertes Lackierungs-MSAA", "Verbessertes Lackierungs-Sampling"},
     .settings_descriptions =
-        {"Aktualisiert Sonnenschatten in jedem Bild. Erhöht die GPU-Last. Neustart "
-         "erforderlich.",
+        {"Flüssige Sonnenschatten steuern. Standard nutzt die Einstellung der aktuellen "
+         "Übersetzungsschicht. Neustart nötig.",
          "",
-         "Legt die Fotomodus-Samples für Schärfentiefe und Bewegungsunschärfe "
-         "fest. Standard verwendet "
-         "129 Samples. Höhere Werte verlängern die Aufnahme. Neustart "
-         "erforderlich.",
+         "Fotomodus-Samples wählen. Standard nutzt die Einstellung der aktuellen "
+         "Übersetzungsschicht. Neustart nötig.",
          "", "Wähle, ob sich die Minikarte nach dem Auto oder der Kamera richtet.",
          "Verwendet Filmkameras während Autodrive.",
          "Überspringt den erzwungenen Dialog bei Meisterschaftsrennen mit einem "
@@ -140,13 +152,20 @@ static const VideoOptionsText german = {
          "erfordern einen Spielneustart.",
          "Wo das neue Auto nach einem Fahrzeugwechsel in der offenen Welt stehen "
          "soll. Die zweite "
-         "Option lässt dich genau an der Position des vorherigen Autos."},
+         "Option lässt dich genau an der Position des vorherigen Autos.",
+         "Nutzt 4K-Lackierungen. Standard folgt der Übersetzungsschicht. Neustart erforderlich.",
+         "Nutzt 4x MSAA für Lackierungen. Standard folgt der Übersetzungsschicht. Neustart "
+         "erforderlich.",
+         "Nutzt 2x Sampling für Lackierungen. Standard folgt der Übersetzungsschicht. Neustart "
+         "erforderlich."},
     .default_choice = L"Standard",
     .minimap_choices = {L"Auto folgen", L"Kamera folgen"},
     .spawn_choices = {L"Einfahrt zum Autotreffen", L"Festivalgelände"},
     .car_position_choices = {L"Nächste Straße", L"Gleiche Position"}};
 
 static const VideoOptionsText french = {
+    .garage_label = L"Retourner au garage",
+    .garage_question = L"Retourner au garage du festival sur la carte actuelle ?",
     .camera = "Caméra de drift",
     .driver = "Pilote",
     .parameters = {"Sensibilité", "Vitesse de rotation", "Amplitude"},
@@ -169,17 +188,14 @@ static const VideoOptionsText french = {
     .settings_names = {"Ombres en temps réel", "", "Échantillons du mode photo", "",
                        "Orientation de la mini-carte", "Caméra cinématique Autodrive",
                        "Ignorer le dialogue de championnat", "Lieu d’apparition",
-                       "Position au changement de voiture"},
+                       "Position au changement de voiture", "Livrées en résolution 4K",
+                       "MSAA amélioré des livrées", "Échantillonnage amélioré des livrées"},
     .settings_descriptions =
-        {"Actualise les ombres du soleil à chaque image. Augmente la charge du "
-         "GPU. Redémarrage "
-         "requis.",
+        {"Réglez les ombres fluides. Par défaut suit le réglage de la couche de traduction "
+         "actuelle. Redémarrage requis.",
          "",
-         "Définissez les échantillons du mode photo pour la profondeur de champ et "
-         "le flou de "
-         "mouvement. Par défaut : 129 échantillons. Une valeur élevée prolonge la "
-         "capture. Redémarrage "
-         "requis.",
+         "Réglez les échantillons photo. Par défaut suit la couche de traduction actuelle. "
+         "Redémarrage requis.",
          "", "Choisissez si la mini-carte suit la voiture ou la caméra.",
          "Utilise des caméras cinématiques pendant Autodrive.",
          "Ignore le dialogue obligatoire en entrant dans une course de championnat "
@@ -193,13 +209,19 @@ static const VideoOptionsText french = {
          "L’endroit où placer la nouvelle voiture lors d’un changement de voiture "
          "dans le monde "
          "ouvert. La seconde option vous laisse exactement à l’emplacement de "
-         "l’ancienne voiture."},
+         "l’ancienne voiture.",
+         "Livrées en 4K. Par défaut suit la couche de traduction. Redémarrage requis.",
+         "MSAA 4x des livrées. Par défaut suit la couche de traduction. Redémarrage requis.",
+         "Échantillonnage 2x des livrées. Par défaut suit la couche de traduction. Redémarrage "
+         "requis."},
     .default_choice = L"Par défaut",
     .minimap_choices = {L"Suivre la voiture", L"Suivre la caméra"},
     .spawn_choices = {L"Entrée du rassemblement", L"Site du festival"},
     .car_position_choices = {L"Route la plus proche", L"Même emplacement"}};
 
 static const VideoOptionsText spanish = {
+    .garage_label = L"Volver al garaje",
+    .garage_question = L"¿Volver al garaje del festival del mapa actual?",
     .camera = "Cámara de derrape",
     .driver = "Piloto",
     .parameters = {"Sensibilidad", "Velocidad de giro", "Rango"},
@@ -224,17 +246,14 @@ static const VideoOptionsText spanish = {
     .settings_names = {"Sombras en tiempo real", "", "Muestras del modo Foto", "",
                        "Orientación del minimapa", "Cámara cinemática de Autodrive",
                        "Omitir diálogo de campeonato", "Ubicación inicial",
-                       "Posición al cambiar de coche"},
+                       "Posición al cambiar de coche", "Diseños en resolución 4K",
+                       "MSAA mejorado de diseños", "Muestreo mejorado de diseños"},
     .settings_descriptions =
-        {"Actualiza las sombras del sol en cada fotograma. Aumenta la carga de la "
-         "GPU. Requiere "
-         "reiniciar.",
+        {"Controla las sombras suaves. Predeterminado usa el ajuste de la capa de traducción "
+         "actual. Reinicia el juego.",
          "",
-         "Ajusta las muestras del modo foto para profundidad de campo y desenfoque "
-         "de movimiento. "
-         "Predeterminado usa 129 muestras. Los valores altos aumentan el tiempo de "
-         "captura. Requiere "
-         "reiniciar.",
+         "Ajusta las muestras del modo foto. Predeterminado usa la capa de traducción actual. "
+         "Reinicia el juego.",
          "", "Elige si el minimapa sigue al coche o a la cámara.",
          "Usa cámaras cinemáticas durante Autodrive.",
          "Omite el diálogo obligatorio al entrar en una carrera de campeonato con "
@@ -247,13 +266,19 @@ static const VideoOptionsText spanish = {
          "aplicar los cambios.",
          "Dónde debe estar el nuevo coche al cambiar de coche en el mundo abierto. "
          "La segunda opción "
-         "te deja exactamente donde estaba el coche anterior."},
+         "te deja exactamente donde estaba el coche anterior.",
+         "Usa diseños en 4K. Predeterminado sigue la capa de traducción. Requiere reiniciar.",
+         "Usa MSAA 4x en diseños. Predeterminado sigue la capa de traducción. Requiere reiniciar.",
+         "Usa muestreo 2x en diseños. Predeterminado sigue la capa de traducción. Requiere "
+         "reiniciar."},
     .default_choice = L"Predeterminado",
     .minimap_choices = {L"Seguir coche", L"Seguir cámara"},
     .spawn_choices = {L"Entrada de la reunión de coches", L"Recinto del festival"},
     .car_position_choices = {L"Carretera más cercana", L"Misma ubicación"}};
 
 static const VideoOptionsText mexican = {
+    .garage_label = L"Volver al garage",
+    .garage_question = L"¿Volver al garage del festival del mapa actual?",
     .camera = "Cámara de derrape",
     .driver = "Piloto",
     .parameters = {"Sensibilidad", "Velocidad de giro", "Rango"},
@@ -278,17 +303,14 @@ static const VideoOptionsText mexican = {
     .settings_names = {"Sombras en tiempo real", "", "Muestras del modo Foto", "",
                        "Orientación del minimapa", "Cámara cinemática de Autodrive",
                        "Omitir diálogo de campeonato", "Ubicación inicial",
-                       "Posición al cambiar de auto"},
+                       "Posición al cambiar de auto", "Diseños en resolución 4K",
+                       "MSAA mejorado de diseños", "Muestreo mejorado de diseños"},
     .settings_descriptions =
-        {"Actualiza las sombras del sol en cada cuadro. Aumenta la carga de la "
-         "GPU. Requiere "
-         "reiniciar.",
+        {"Controla las sombras suaves. Predeterminado usa el ajuste de la capa de traducción "
+         "actual. Reinicia el juego.",
          "",
-         "Ajusta las muestras del modo foto para profundidad de campo y desenfoque "
-         "de movimiento. "
-         "Predeterminado usa 129 muestras. Los valores altos aumentan el tiempo de "
-         "captura. Requiere "
-         "reiniciar.",
+         "Ajusta las muestras del modo foto. Predeterminado usa la capa de traducción actual. "
+         "Reinicia el juego.",
          "", "Elige si el minimapa sigue al auto o a la cámara.",
          "Usa cámaras cinemáticas durante Autodrive.",
          "Omite el diálogo obligatorio al entrar en una carrera de campeonato con "
@@ -301,13 +323,19 @@ static const VideoOptionsText mexican = {
          "aplicar los cambios.",
          "Dónde debe estar el nuevo auto al cambiar de auto en el mundo abierto. "
          "La segunda opción te "
-         "deja exactamente donde estaba el auto anterior."},
+         "deja exactamente donde estaba el auto anterior.",
+         "Usa diseños en 4K. Predeterminado sigue la capa de traducción. Requiere reiniciar.",
+         "Usa MSAA 4x en diseños. Predeterminado sigue la capa de traducción. Requiere reiniciar.",
+         "Usa muestreo 2x en diseños. Predeterminado sigue la capa de traducción. Requiere "
+         "reiniciar."},
     .default_choice = L"Predeterminado",
     .minimap_choices = {L"Seguir auto", L"Seguir cámara"},
     .spawn_choices = {L"Entrada de la reunión de autos", L"Recinto del festival"},
     .car_position_choices = {L"Carretera más cercana", L"Misma ubicación"}};
 
 static const VideoOptionsText italian = {
+    .garage_label = L"Torna al garage",
+    .garage_question = L"Tornare al garage del festival sulla mappa attuale?",
     .camera = "Telecamera di derapata",
     .driver = "Pilota",
     .parameters = {"Sensibilità", "Velocità di rotazione", "Ampiezza"},
@@ -330,18 +358,15 @@ static const VideoOptionsText italian = {
     .fov_description = "Imposta il campo visivo verticale della telecamera selezionata in gradi.",
     .settings_names = {"Ombre in tempo reale", "", "Campioni modalità Foto", "",
                        "Orientamento minimappa", "Telecamera cinematografica Autodrive",
-                       "Salta dialogo campionato", "Posizione iniziale",
-                       "Posizione al cambio auto"},
+                       "Salta dialogo campionato", "Posizione iniziale", "Posizione al cambio auto",
+                       "Livree in risoluzione 4K", "MSAA migliorato delle livree",
+                       "Campionamento migliorato delle livree"},
     .settings_descriptions =
-        {"Aggiorna le ombre del sole a ogni fotogramma. Aumenta il carico della "
-         "GPU. Riavvio "
-         "richiesto.",
+        {"Regola le ombre fluide. Predefinito usa l'impostazione del livello di traduzione "
+         "attuale. Riavvio richiesto.",
          "",
-         "Imposta i campioni della modalità foto per profondità di campo e "
-         "sfocatura di movimento. "
-         "Predefinito usa 129 campioni. Valori maggiori aumentano il tempo di "
-         "cattura. Riavvio "
-         "richiesto.",
+         "Regola i campioni foto. Predefinito usa l'impostazione del livello di traduzione "
+         "attuale. Riavvio richiesto.",
          "", "Scegli se la minimappa segue l’auto o la telecamera.",
          "Usa telecamere cinematografiche durante Autodrive.",
          "Salta il dialogo obbligatorio entrando in una gara di campionato con "
@@ -354,13 +379,19 @@ static const VideoOptionsText italian = {
          "le modifiche.",
          "Dove posizionare la nuova auto quando cambi auto nel mondo aperto. La "
          "seconda opzione ti "
-         "lascia esattamente nella posizione dell’auto precedente."},
+         "lascia esattamente nella posizione dell’auto precedente.",
+         "Usa livree in 4K. Predefinito segue il livello di traduzione. Riavvio necessario.",
+         "Usa MSAA 4x per le livree. Predefinito segue il livello di traduzione. Riavvio "
+         "necessario.",
+         "Usa campionamento 2x. Predefinito segue il livello di traduzione. Riavvio necessario."},
     .default_choice = L"Predefinito",
     .minimap_choices = {L"Segui auto", L"Segui telecamera"},
     .spawn_choices = {L"Ingresso del raduno", L"Area del festival"},
     .car_position_choices = {L"Strada più vicina", L"Stessa posizione"}};
 
 static const VideoOptionsText japanese = {
+    .garage_label = L"ガレージに戻る",
+    .garage_question = L"現在のマップのフェスティバル ガレージに戻りますか？",
     .camera = "ドリフトカメラ",
     .driver = "ドライバー",
     .parameters = {"感度", "視点移動速度", "可動範囲"},
@@ -379,12 +410,14 @@ static const VideoOptionsText japanese = {
     .fov_description = "選択したカメラの垂直視野角を度単位で設定します。",
     .settings_names = {"リアルタイムの影", "", "フォトモードのサンプル数", "", "ミニマップの向き",
                        "Autodriveのシネマティックカメラ", "チャンピオンシップの会話をスキップ",
-                       "開始地点", "車の変更時の位置"},
+                       "開始地点", "車の変更時の位置", "4K解像度のデザイン", "デザインの強化MSAA",
+                       "デザインの強化サンプリング"},
     .settings_descriptions =
-        {"太陽の影を毎フレーム更新します。GPU負荷が増加します。再起動が必要です。", "",
-         "フォトモードの被写界深度とモーションブラーのサンプル数を設定します。標準"
-         "は129サンプルです。値"
-         "を上げると撮影時間が長くなります。再起動が必要です。",
+        {"太陽の影の滑らかさを設定します。既定では現在の変換レイヤーの設定を使用します。再起動が必"
+         "要です。",
+         "",
+         "フォトモードのサンプル数を設定します。既定では現在の変換レイヤーの設定を使用します。再起"
+         "動が必要です。",
          "", "ミニマップの向きを車またはカメラに合わせます。",
          "Autodrive中にシネマティックカメラを使用します。",
          "参加条件を満たさない車でチャンピオンシップに入る際の強制会話をスキップし"
@@ -396,13 +429,19 @@ static const VideoOptionsText japanese = {
          "。",
          "オープンワールドで車を変更したときの、新しい車の位置を設定します。後者を"
          "選ぶと、前の車があっ"
-         "た場所にそのまま留まります。"},
+         "た場所にそのまま留まります。",
+         "デザインを4Kにします。「デフォルト」は変換レイヤーの設定を使用。再起動が必要です。",
+         "デザインに4x MSAAを使用。「デフォルト」は変換レイヤーの設定を使用。再起動が必要です。",
+         "デザインに2xサンプリングを使用。「デフォルト」は変換レイヤーの設定を使用。再起動が必要で"
+         "す。"},
     .default_choice = L"デフォルト",
     .minimap_choices = {L"車に合わせる", L"カメラに合わせる"},
     .spawn_choices = {L"カーミーティング入口", L"フェスティバル会場"},
     .car_position_choices = {L"最寄りの道路", L"同じ位置"}};
 
 static const VideoOptionsText korean = {
+    .garage_label = L"차고로 돌아가기",
+    .garage_question = L"현재 지도의 페스티벌 차고로 돌아가시겠습니까?",
     .camera = "드리프트 카메라",
     .driver = "운전자",
     .parameters = {"민감도", "시점 이동 속도", "범위"},
@@ -420,14 +459,14 @@ static const VideoOptionsText korean = {
     .fov_description = "해당 카메라의 수직 시야각을 도 단위로 설정합니다.",
     .settings_names = {"실시간 그림자", "", "사진 모드 샘플 수", "", "미니맵 방향",
                        "Autodrive 시네마틱 카메라", "챔피언십 대화 건너뛰기", "시작 위치",
-                       "차량 변경 시 위치"},
+                       "차량 변경 시 위치", "4K 해상도 디자인", "향상된 디자인 MSAA",
+                       "향상된 디자인 샘플링"},
     .settings_descriptions =
-        {"매 프레임 태양 그림자를 갱신합니다. GPU 부하가 증가합니다. 재시작이 "
-         "필요합니다.",
+        {"태양 그림자의 부드러운 갱신을 설정합니다. 기본값은 현재 변환 계층의 설정을 사용합니다. "
+         "재시작이 필요합니다.",
          "",
-         "사진 모드의 피사계 심도와 모션 블러 샘플 수를 설정합니다. 기본값은 "
-         "129개입니다. 값이 "
-         "높을수록 촬영 시간이 늘어납니다. 재시작이 필요합니다.",
+         "사진 모드 샘플 수를 설정합니다. 기본값은 현재 변환 계층의 설정을 사용합니다. 재시작이 "
+         "필요합니다.",
          "", "미니맵이 차량 또는 카메라 방향을 따르도록 설정합니다.",
          "Autodrive 중 시네마틱 카메라를 사용합니다.",
          "참가 조건에 맞지 않는 차량으로 챔피언십에 진입할 때의 강제 대화를 "
@@ -439,13 +478,20 @@ static const VideoOptionsText korean = {
          "합니다.",
          "오픈 월드에서 차량을 변경할 때 새 차량을 배치할 위치입니다. 두 번째 "
          "옵션은 이전 차량이 있던 "
-         "위치에 그대로 둡니다."},
+         "위치에 그대로 둡니다.",
+         "디자인를 4K로 표시합니다. 기본값은 변환 계층 설정을 사용합니다. 재시작이 필요합니다.",
+         "디자인에 4x MSAA를 사용합니다. 기본값은 변환 계층 설정을 사용합니다. 재시작이 "
+         "필요합니다.",
+         "디자인에 2x 샘플링을 사용합니다. 기본값은 변환 계층 설정을 사용합니다. 재시작이 "
+         "필요합니다."},
     .default_choice = L"기본값",
     .minimap_choices = {L"차량 따라가기", L"카메라 따라가기"},
     .spawn_choices = {L"자동차 모임 입구", L"페스티벌 현장"},
     .car_position_choices = {L"가장 가까운 도로", L"같은 위치"}};
 
 static const VideoOptionsText chinese = {
+    .garage_label = L"返回車庫",
+    .garage_question = L"要返回目前地圖上的嘉年華車庫嗎？",
     .camera = "甩尾攝影機",
     .driver = "駕駛",
     .parameters = {"靈敏度", "視角移動速度", "範圍"},
@@ -458,25 +504,29 @@ static const VideoOptionsText chinese = {
     .fov_views = {"追蹤", "遠距離追蹤", "駕駛", "引擎蓋", "保險桿"},
     .fov_description = "以度為單位設定所選攝影機的垂直視野。",
     .settings_names = {"即時陰影", "", "相片模式取樣數", "", "小地圖方向", "Autodrive電影攝影機",
-                       "略過錦標賽對話", "開始位置", "換車時的位置"},
+                       "略過錦標賽對話", "開始位置", "換車時的位置", "4K解析度塗裝", "增強塗裝MSAA",
+                       "增強塗裝取樣"},
     .settings_descriptions =
-        {"每一幀更新太陽陰影。會增加GPU負載。需要重新啟動遊戲。", "",
-         "設定相片模式中景深與動態模糊的取樣數。預設使用129個樣本。較高數值會增加拍"
-         "攝時間。需要重新啟動"
-         "遊戲。",
-         "", "選擇小地圖跟隨車輛或攝影機的方向。", "Autodrive時使用電影攝影機。",
+        {"設定平滑的陽光陰影更新。預設使用目前轉譯層的設定。需要重新啟動遊戲。", "",
+         "設定相片模式的取樣數。預設使用目前轉譯層的設定。需要重新啟動遊戲。", "",
+         "選擇小地圖跟隨車輛或攝影機的方向。", "Autodrive時使用電影攝影機。",
          "駕駛不符合資格的車輛進入錦標賽時，略過強制對話。需要重新啟動遊戲。",
          "選擇遊戲啟動時的開始位置。預設會像平常一樣，從最接近您關閉遊戲時所在位置"
          "的車聚開始。需要重新"
          "啟動遊戲才能套用變更。",
          "在開放世界換車時，新車應該出現的位置。後者會讓您留在舊車原本所在的位置"
-         "。"},
+         "。",
+         "使用4K塗裝。預設使用目前轉譯層的設定。需要重新啟動遊戲。",
+         "塗裝使用4x MSAA。預設使用目前轉譯層的設定。需要重新啟動遊戲。",
+         "塗裝使用2x取樣。預設使用目前轉譯層的設定。需要重新啟動遊戲。"},
     .default_choice = L"預設",
     .minimap_choices = {L"跟隨車輛", L"跟隨攝影機"},
     .spawn_choices = {L"車聚入口", L"嘉年華會場"},
     .car_position_choices = {L"最近的道路", L"相同位置"}};
 
 static const VideoOptionsText czech = {
+    .garage_label = L"Vrátit se do garáže",
+    .garage_question = L"Vrátit se do festivalové garáže na aktuální mapě?",
     .camera = "Driftovací kamera",
     .driver = "Řidič",
     .parameters = {"Citlivost", "Rychlost otáčení", "Rozsah"},
@@ -495,15 +545,15 @@ static const VideoOptionsText czech = {
     .fov_description = "Nastavte svislé zorné pole vybrané kamery ve stupních.",
     .settings_names = {"Stíny v reálném čase", "", "Vzorky fotografického režimu", "",
                        "Orientace minimapy", "Filmová kamera Autodrive",
-                       "Přeskočit dialog šampionátu", "Počáteční poloha", "Poloha při změně auta"},
+                       "Přeskočit dialog šampionátu", "Počáteční poloha", "Poloha při změně auta",
+                       "Polepy v rozlišení 4K", "Vylepšené MSAA polepů",
+                       "Vylepšené vzorkování polepů"},
     .settings_descriptions =
-        {"Aktualizuje sluneční stíny v každém snímku. Zvyšuje zatížení GPU. "
+        {"Nastaví plynulé sluneční stíny. Výchozí použije nastavení aktuální překladové vrstvy. "
          "Vyžaduje restart.",
          "",
-         "Nastaví vzorky fotografického režimu pro hloubku ostrosti a rozmazání "
-         "pohybu. Výchozí "
-         "nastavení používá 129 vzorků. Vyšší hodnoty prodlouží snímání. Vyžaduje "
-         "restart.",
+         "Nastaví počet vzorků fotorežimu. Výchozí použije nastavení aktuální překladové vrstvy. "
+         "Vyžaduje restart.",
          "", "Zvolte, zda minimapa sleduje auto, nebo kameru.",
          "Používá filmové kamery během Autodrive.",
          "Přeskočí vynucený dialog při vstupu do závodu šampionátu s nezpůsobilým "
@@ -514,13 +564,19 @@ static const VideoOptionsText czech = {
          "poloze při ukončení hry. Změny se projeví po restartu hry.",
          "Kde má stát nové auto při změně auta v otevřeném světě. Druhá možnost "
          "vás ponechá přesně na "
-         "místě předchozího auta."},
+         "místě předchozího auta.",
+         "Použije 4K polepy. Výchozí přebírá nastavení překladové vrstvy. Vyžaduje restart.",
+         "Použije 4x MSAA polepů. Výchozí přebírá nastavení překladové vrstvy. Vyžaduje restart.",
+         "Použije 2x vzorkování polepů. Výchozí přebírá nastavení překladové vrstvy. Vyžaduje "
+         "restart."},
     .default_choice = L"Výchozí",
     .minimap_choices = {L"Sledovat auto", L"Sledovat kameru"},
     .spawn_choices = {L"Vjezd na sraz aut", L"Areál festivalu"},
     .car_position_choices = {L"Nejbližší silnice", L"Stejná poloha"}};
 
 static const VideoOptionsText hungarian = {
+    .garage_label = L"Vissza a garázsba",
+    .garage_question = L"Visszatérsz az aktuális térkép fesztiválgarázsába?",
     .camera = "Driftkamera",
     .driver = "Vezető",
     .parameters = {"Érzékenység", "Nézetváltás sebessége", "Tartomány"},
@@ -540,14 +596,14 @@ static const VideoOptionsText hungarian = {
     .fov_description = "Állítsd be a kiválasztott kamera függőleges látószögét fokban.",
     .settings_names = {"Valós idejű árnyékok", "", "Fotómód mintái", "", "Minitérkép tájolása",
                        "Autodrive filmes kamerája", "Bajnokság párbeszédének kihagyása",
-                       "Kezdőhely", "Autócsere helye"},
+                       "Kezdőhely", "Autócsere helye", "4K felbontású festések",
+                       "Javított festés-MSAA", "Javított festés-mintavételezés"},
     .settings_descriptions =
-        {"Minden képkockán frissíti a napárnyékokat. Növeli a GPU terhelését. "
+        {"A napárnyékok simítása. Az alapérték az aktuális fordítási réteg beállítását használja. "
          "Újraindítás szükséges.",
          "",
-         "Beállítja a fotómód mélységélességének és mozgáselmosásának mintáit. Az "
-         "alapérték 129 minta. "
-         "A nagyobb érték hosszabb felvételi időt jelent. Újraindítás szükséges.",
+         "A fotómód mintaszáma. Az alapérték az aktuális fordítási réteg beállítását használja. "
+         "Újraindítás szükséges.",
          "", "Válaszd ki, hogy a minitérkép az autót vagy a kamerát kövesse.",
          "Filmes kamerákat használ az Autodrive során.",
          "Kihagyja a kötelező párbeszédet, ha nem megfelelő autóval lépsz be egy "
@@ -560,13 +616,21 @@ static const VideoOptionsText hungarian = {
          "indítani a játékot.",
          "Az új autó helye, amikor a nyílt világban autót váltasz. A második "
          "lehetőség pontosan ott "
-         "hagy, ahol az előző autó volt."},
+         "hagy, ahol az előző autó volt.",
+         "4K festéseket használ. Az alapérték a fordítási réteg beállítását követi. Újraindítás "
+         "szükséges.",
+         "4x MSAA-t használ. Az alapérték a fordítási réteg beállítását követi. Újraindítás "
+         "szükséges.",
+         "2x mintavételezést használ. Az alapérték a fordítási réteg beállítását követi. "
+         "Újraindítás szükséges."},
     .default_choice = L"Alapérték",
     .minimap_choices = {L"Autó követése", L"Kamera követése"},
     .spawn_choices = {L"Autóstalálkozó bejárata", L"Fesztivál helyszíne"},
     .car_position_choices = {L"Legközelebbi út", L"Azonos hely"}};
 
 static const VideoOptionsText polish = {
+    .garage_label = L"Wróć do garażu",
+    .garage_question = L"Wrócić do garażu festiwalowego na bieżącej mapie?",
     .camera = "Kamera driftu",
     .driver = "Kierowca",
     .parameters = {"Czułość", "Szybkość obrotu", "Zakres"},
@@ -585,15 +649,15 @@ static const VideoOptionsText polish = {
     .fov_description = "Ustaw pionowe pole widzenia wybranej kamery w stopniach.",
     .settings_names = {"Cienie w czasie rzeczywistym", "", "Próbki trybu fotograficznego", "",
                        "Orientacja minimapy", "Filmowa kamera Autodrive", "Pomiń dialog mistrzostw",
-                       "Miejsce startu", "Pozycja po zmianie samochodu"},
+                       "Miejsce startu", "Pozycja po zmianie samochodu",
+                       "Malowania w rozdzielczości 4K", "Ulepszone MSAA malowań",
+                       "Ulepszone próbkowanie malowań"},
     .settings_descriptions =
-        {"Aktualizuje cienie słońca w każdej klatce. Zwiększa obciążenie GPU. "
-         "Wymaga restartu.",
+        {"Płynne cienie słońca. Domyślne używa ustawienia bieżącej warstwy translacji. Wymagany "
+         "restart gry.",
          "",
-         "Ustawia próbki trybu fotograficznego dla głębi ostrości i rozmycia "
-         "ruchu. Domyślnie używa "
-         "129 próbek. Wyższe wartości wydłużają czas rejestracji. Wymaga ponownego "
-         "uruchomienia.",
+         "Próbki trybu zdjęć. Domyślne używa ustawienia bieżącej warstwy translacji. Wymagany "
+         "restart gry.",
          "", "Wybierz, czy minimapa ma śledzić samochód, czy kamerę.",
          "Używa filmowych kamer podczas Autodrive.",
          "Pomija obowiązkowy dialog przy wjeździe do wyścigu mistrzostw "
@@ -605,13 +669,18 @@ static const VideoOptionsText polish = {
          "zastosować zmiany.",
          "Miejsce nowego samochodu po zmianie auta w otwartym świecie. Druga opcja "
          "pozostawia cię "
-         "dokładnie tam, gdzie był poprzedni samochód."},
+         "dokładnie tam, gdzie był poprzedni samochód.",
+         "Używa malowań 4K. Domyślne stosuje ustawienia warstwy translacji. Wymagany restart.",
+         "Używa MSAA 4x. Domyślne stosuje ustawienia warstwy translacji. Wymagany restart.",
+         "Używa próbkowania 2x. Domyślne stosuje ustawienia warstwy translacji. Wymagany restart."},
     .default_choice = L"Domyślne",
     .minimap_choices = {L"Śledź samochód", L"Śledź kamerę"},
     .spawn_choices = {L"Wjazd na zlot", L"Teren festiwalu"},
     .car_position_choices = {L"Najbliższa droga", L"To samo miejsce"}};
 
 static const VideoOptionsText russian = {
+    .garage_label = L"Вернуться в гараж",
+    .garage_question = L"Вернуться в гараж фестиваля на текущей карте?",
     .camera = "Дрифт-камера",
     .driver = "Водитель",
     .parameters = {"Чувствительность", "Скорость поворота", "Диапазон"},
@@ -633,15 +702,14 @@ static const VideoOptionsText russian = {
     .settings_names = {"Тени в реальном времени", "", "Выборки фоторежима", "",
                        "Ориентация мини-карты", "Кинематографическая камера Autodrive",
                        "Пропуск диалога чемпионата", "Место появления",
-                       "Положение при смене машины"},
+                       "Положение при смене машины", "Ливреи в разрешении 4K",
+                       "Улучшенное MSAA ливрей", "Улучшенная выборка ливрей"},
     .settings_descriptions =
-        {"Обновляет солнечные тени каждый кадр. Повышает нагрузку на GPU. "
-         "Требуется перезапуск.",
+        {"Плавное обновление теней. По умолчанию используется настройка текущего слоя трансляции. "
+         "Нужен перезапуск.",
          "",
-         "Число образцов глубины резкости и размытия в движении в фоторежиме. По "
-         "умолчанию — 129 "
-         "образцов. Высокие значения увеличивают время съёмки. Требуется "
-         "перезапуск.",
+         "Число выборок фоторежима. По умолчанию используется настройка текущего слоя трансляции. "
+         "Нужен перезапуск.",
          "", "Выберите, следует ли мини-карта за автомобилем или камерой.",
          "Использует кинематографические камеры во время Autodrive.",
          "Пропускает обязательный диалог при въезде в гонку чемпионата на "
@@ -653,13 +721,18 @@ static const VideoOptionsText russian = {
          "перезапустите игру.",
          "Где должна находиться новая машина при смене машины в открытом мире. "
          "Второй вариант "
-         "оставляет вас точно там, где была предыдущая машина."},
+         "оставляет вас точно там, где была предыдущая машина.",
+         "Ливреи в 4K. По умолчанию: настройки слоя трансляции. Требуется перезапуск.",
+         "MSAA 4x для ливрей. По умолчанию: настройки слоя трансляции. Требуется перезапуск.",
+         "Выборка 2x для ливрей. По умолчанию: настройки слоя трансляции. Требуется перезапуск."},
     .default_choice = L"По умолчанию",
     .minimap_choices = {L"Следовать за автомобилем", L"Следовать за камерой"},
     .spawn_choices = {L"Въезд на автосходку", L"Площадка фестиваля"},
     .car_position_choices = {L"Ближайшая дорога", L"То же место"}};
 
 static const VideoOptionsText dutch = {
+    .garage_label = L"Terug naar garage",
+    .garage_question = L"Terug naar de festivalgarage op de huidige kaart?",
     .camera = "Driftcamera",
     .driver = "Bestuurder",
     .parameters = {"Gevoeligheid", "Kijksnelheid", "Bereik"},
@@ -681,14 +754,13 @@ static const VideoOptionsText dutch = {
     .fov_description = "Stel het verticale gezichtsveld van de betreffende camera in graden in.",
     .settings_names = {"Realtime schaduwen", "", "Samples fotomodus", "", "Oriëntatie minikaart",
                        "Filmische camera Autodrive", "Kampioenschapsdialoog overslaan",
-                       "Startlocatie", "Positie bij autowissel"},
+                       "Startlocatie", "Positie bij autowissel", "Bestickering in 4K",
+                       "Verbeterde bestickerings-MSAA", "Verbeterde bestickeringssampling"},
     .settings_descriptions =
-        {"Werkt zonneschaduwen elk beeld bij. Verhoogt de GPU-belasting. Opnieuw "
-         "starten vereist.",
+        {"Regel vloeiende zonneschaduwen. Standaard volgt de instelling van de huidige "
+         "vertaallaag. Herstart vereist.",
          "",
-         "Stel de fotomodus-samples voor scherptediepte en bewegingsonscherpte in. "
-         "Standaard gebruikt "
-         "129 samples. Hogere waarden verlengen de opnametijd. Opnieuw starten "
+         "Stel fotomonsters in. Standaard volgt de instelling van de huidige vertaallaag. Herstart "
          "vereist.",
          "", "Kies of de minikaart de auto of de camera volgt.",
          "Gebruikt filmische camera’s tijdens Autodrive.",
@@ -702,7 +774,10 @@ static const VideoOptionsText dutch = {
          "opnieuw om wijzigingen toe te passen.",
          "Waar de nieuwe auto moet staan wanneer je in de open wereld van auto "
          "wisselt. De tweede "
-         "optie laat je precies staan waar de vorige auto was."},
+         "optie laat je precies staan waar de vorige auto was.",
+         "Gebruik 4K-bestickering. Standaard volgt de vertaallaag. Herstart vereist.",
+         "Gebruik 4x MSAA. Standaard volgt de vertaallaag. Herstart vereist.",
+         "Gebruik 2x sampling. Standaard volgt de vertaallaag. Herstart vereist."},
     .default_choice = L"Standaard",
     .minimap_choices = {L"Auto volgen", L"Camera volgen"},
     .spawn_choices = {L"Ingang autobijeenkomst", L"Festivalterrein"},

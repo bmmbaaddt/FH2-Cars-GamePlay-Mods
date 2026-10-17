@@ -1,0 +1,6 @@
+#ifndef FH2_WHEEL_VARIANTS_H
+#define FH2_WHEEL_VARIANTS_H
+#define FF_WHEEL_ID_TEXT "1002391"
+#define FF_CAR_ID_TEXT "2391"
+#define FF_WHEEL_MEDIA "NIS_FairladyZFF_02"
+#endif

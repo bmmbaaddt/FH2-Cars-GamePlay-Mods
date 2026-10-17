@@ -33,7 +33,17 @@ A settings window for **Forza Horizon 2 (Xbox One)** running on **Azimuth**. Cha
 | `E` | Right indicator (press again to switch off) |
 | `H` | Hazard lights (press again to switch off) |
 
-You can change these keys in `data\bin\FH2_ExtraOptions.ini`, section `[Keyboard]`: use a letter, a digit, F1–F12, or `off`. FH2 has no horn, so there is no horn key.
+You can change these keys in `FH2_ExtraOptions.ini` next to `azimuth.exe`, section `[Keyboard]`: use a letter, a digit, F1–F12, or `off`. FH2 has no horn, so there is no horn key.
+
+**On a controller** (from ExtraOptions 0.2.98):
+
+| Button | Action |
+|---|---|
+| Hold D-pad left / right (1 s) | Left / right indicator (switches off by itself after the turn) |
+| Tap D-pad up | Hazard lights |
+| Tap right stick | Headlights |
+
+The keyboard and the controller switch the same indicators.
 
 **World keys** (free roam, tick *World keys* in the window):
 
@@ -56,9 +66,9 @@ You can change these keys in `data\bin\FH2_ExtraOptions.ini`, section `[Keyboard
 ## Requirements
 
 - Windows 10 or 11 (PowerShell 5.1 is built in)
-- Forza Horizon 2 for Xbox One (1.0.0.64) on **Azimuth 0.9.9 or 0.9.10**
+- Forza Horizon 2 for Xbox One (1.0.0.64) on **Azimuth 0.9.10** (0.9.9 works too, without ghost cars, keyboard keys and sky road)
 - **Python 3** on PATH, for the car list and car mods ([python.org](https://www.python.org/downloads/): tick **"Add python.exe to PATH"** when installing)
-- **[ExtraOptions](https://github.com/RokkuDayo/ForzaHorizon2_ExtraOptions)** installed in `data\bin`, for ghost cars and the keyboard keys. Apply swaps it for the included build that adds these features (your original is backed up and comes back with Restore originals). Works with the LivingCockpit loader too. Everything else works without it.
+- **[ExtraOptions](https://github.com/RokkuDayo/ForzaHorizon2_ExtraOptions) is included.** Apply installs ExtraOptions 0.2.98 with this tool's additions as `winmm.dll` next to `azimuth.exe`, with its settings in `FH2_ExtraOptions.ini` beside it. An older ExtraOptions in `data\bin` is backed up and swapped for Azimuth's own helper; Restore originals puts everything back. You also get everything new in 0.2.98: D-pad indicators, aero tuning without Forza aero, Return to Garage in the pause menu, the new drift camera, stock rims and livery quality in the in-game Video settings. Works with the LivingCockpit loader too.
 
 ## Setup
 
@@ -86,7 +96,7 @@ Updating from an older version: replace the whole **FH2 Mods** folder (keep your
 
 ## Using ForzaInfinity?
 
-[ForzaInfinity](https://github.com/anarqz/ForzaInfinity) (online play) is its own ExtraOptions build, and Azimuth loads only one, so the two can't run together. Apply leaves ForzaInfinity in place and tells you so. With ForzaInfinity installed:
+[ForzaInfinity](https://github.com/anarqz/ForzaInfinity) (online play) is its own ExtraOptions build in `data\bin`, and only one ExtraOptions can run. Apply leaves ForzaInfinity in place and tells you so, and the FH2 Mods `winmm.dll` switches itself off whenever it finds ForzaInfinity (or any other ExtraOptions) in `data\bin`, so the game is never patched twice. With ForzaInfinity installed:
 
 | Works | Off |
 |---|---|
@@ -106,6 +116,10 @@ Copy **Diagnose.bat** into the FH2 Mods folder if it isn't there, double-click i
 - **`game not found`**: put the FH2 Mods folder next to azimuth.exe, add the game in Azimuth and start it once.
 - **Empty car list**: install Python 3 and tick "Add python.exe to PATH".
 
+## Added cars (mediaoverride / mediapc)
+
+Car mods that add cars through ExtraOptions' `Mount\mediaoverride` or `Mount\mediapc` folder (for example the Rolls-Royce Wraith) ship their own `zipmanifest.xml` and game database. Apply keeps that `zipmanifest.xml` in step with this tool's zips and writes car mods into that database, so the added car stays, shows up in the car list and can be modded too. Install or update such a mod with the game closed, then press Apply again.
+
 ## File overrides (optional)
 
 A file placed at `FH2 Mods\files\<zip name>\<file name>` replaces that file inside the game's zip on Apply, for example `FH2 Mods\files\Camera.zip\CameraPhysics.xml`. The tool's own settings are still applied on top.
@@ -121,7 +135,9 @@ A file placed at `FH2 Mods\files\<zip name>\<file name>` replaces that file insi
 | `settings.json` | The window's values |
 | `cars.json` | Per-car multipliers |
 | `Diagnose.bat`, `diagnose.ps1` | Read-only check when Apply fails; writes `diagnose.txt` |
-| `ExtraOptions\azimuth-tls.dll` | ExtraOptions with ghost cars and keyboard keys added |
+| `ExtraOptions\winmm.dll` | ExtraOptions 0.2.98 with ghost cars, keyboard keys, world keys and sky road added |
+| `ExtraOptions\FH2_ExtraOptions.ini` | Its default settings |
+| `ExtraOptions\azimuth-tls.stock.dll` | Azimuth's own TLS helper, put back in `data\bin` in place of an older ExtraOptions |
 | `ExtraOptions\source\` | Its source code (GPL-3) |
 
 ## License

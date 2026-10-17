@@ -36,3 +36,14 @@ EXPORTS
     MoveFileExW
     DeleteFileW
     GetTickCount64
+    MultiByteToWideChar
+    lstrcmpiW
+    lstrcpyW
+    DisableThreadLibraryCalls
+    InitOnceExecuteOnce
+    GetSystemDirectoryW
+    RaiseException
+    AcquireSRWLockShared
+    ReleaseSRWLockShared
+    AcquireSRWLockExclusive
+    ReleaseSRWLockExclusive

@@ -312,8 +312,8 @@ void azimuth_repair_missing_markers(unsigned char *host) {
     }
     scan->child[length - 1] = 0;
     if (!path_join(scan->search, scan->child,
-                   azimuth_host_build(host) == AZIMUTH_099 ? L"data\\titles\\1A96545B\\saves"
-                                                           : L"data\\saves")) {
+                   azimuth_host_build(host) == AZIMUTH_0910 ? L"data\\titles\\1A96545B\\saves"
+                                                            : L"data\\saves")) {
         goto done;
     }
     repair_root(scan->search);
