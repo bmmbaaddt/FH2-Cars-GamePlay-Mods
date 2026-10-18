@@ -14,7 +14,8 @@ A settings window for **Forza Horizon 2 (Xbox One)** running on **Azimuth**. Cha
 | Crashes | **Less spinning and flipping** from crashes (reduces it, does not remove it), **slide along walls**, barriers and trees instead of stopping dead, **light breakables**: fences, signs, posts and bins weigh almost nothing, so they barely slow you |
 | World keys | Change the time and weather, switch traffic off, repair the car and get back on the road with Ctrl shortcuts in free roam (see below) |
 | Money | CR per level-up, CR per km driven in races |
-| Skills | Skill points and chain XP multipliers, highest chain multiplier, seconds allowed between skills, crashes not ending the skill chain |
+| Skills | Skill points and chain XP multipliers, highest chain multiplier (with the Skill Legend perk you get one above it), seconds allowed between skills, crashes not ending the skill chain |
+| Random car | In **My Cars**, click the right stick or press `R` to jump to a random car of your garage; the window has a **Random car from my garage** button too |
 | Cockpit camera | Field of view and seat position |
 | Car mods | Pick any car (the traffic bus and box truck too) and set power, air drag, downforce, tire grip, brakes, turbo boost, gearing and rev limit (x1 = stock, up to x100; rev limit up to x2, the game crashes above that), and the number of forward gears (up to 8) |
 
@@ -125,6 +126,7 @@ Copy **Diagnose.bat** into the FH2 Mods folder if it isn't there, double-click i
 Car mods that add cars through ExtraOptions' `Mount\mediaoverride` or `Mount\mediapc` folder (for example the Rolls-Royce Wraith) ship their own `zipmanifest.xml` and game database. Apply keeps that `zipmanifest.xml` in step with this tool's zips and writes car mods into that database, so the added car stays, shows up in the car list and can be modded too. Install or update such a mod with the game closed, then press Apply again.
 
 - **FM5 Car Importer:** cars it adds after an Apply are kept, and car mods are not applied twice. Press Restore originals before using its `Uninstall.ps1`, then Apply again.
+- **Moved database:** car mods still work when a car mod moved the game's `gamedbRC.slt` into `mediaoverride` instead of copying it.
 - **One database:** the game reads only one car database (`mediaoverride` before `mediapc`). Two mods that each ship a full database hide each other's cars, so keep added cars in one folder.
 - **Cockpit FOV mods** that change `Camera.zip` work too: leave Cockpit FOV at 48 to keep the mod's value, or set your own.
 

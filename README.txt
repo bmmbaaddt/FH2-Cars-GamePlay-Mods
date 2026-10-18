@@ -58,6 +58,8 @@ Money          CR per level-up, CR per km driven in races
 Skills         skill points and chain XP multipliers, highest chain multiplier,
                seconds allowed between skills (0 = the game's own),
                crashes not ending the skill chain
+               (with the Skill Legend perk you get one above the highest
+               chain multiplier)
 Cockpit        field of view and seat position
 Car mods       pick a car, set multipliers (x1 = stock). Grip and brakes act on the
                car's best road tires and best brakes, so fit those upgrades.
@@ -145,6 +147,8 @@ game files and shows what is different.
       something else before this tool made its backup. Put the original file
       back from your game download, delete the same file from
       <Azimuth folder>\backup_original\media, then Apply again.
+  "game database missing"  put the original
+      Mount\media\stripped\gamedbRC.slt back from your game download.
   "game not found"  put FH2 Mods next to azimuth.exe, add Forza Horizon 2
       (the Anthem_1.0.0.64 folder) in Azimuth and start it once. FH2
       Presents Fast & Furious (Spire) is not supported.
@@ -166,6 +170,8 @@ such a mod with the game closed, then press Apply again.
   FM5 Car Importer  cars it adds after an Apply are kept, and car mods are
       not applied twice. Press Restore originals before using its
       Uninstall.ps1, then Apply again.
+  Moved database  car mods still work when a car mod moved the game's
+      gamedbRC.slt into mediaoverride instead of copying it.
   One database  the game reads only one car database (mediaoverride before
       mediapc). Two mods that each ship a full database hide each other's
       cars, so keep added cars in one folder.
