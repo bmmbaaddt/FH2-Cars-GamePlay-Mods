@@ -24,7 +24,5 @@ jobs:
           gh release create "$GITHUB_REF_NAME" "FH2-Cars-GamePlay-Mods-${GITHUB_REF_NAME}.zip" --title "FH2 Cars & Gameplay Mods ${GITHUB_REF_NAME}" --notes "Extract the zip and put the **FH2 Mods** folder next to azimuth.exe. Requires Python 3 on PATH and **Azimuth 0.9.10**. See the README for setup and keyboard shortcuts.
 
           **What's new**
-          - **Fixed \"pattern not found in CameraSettings.ini\"** with cockpit FOV mods. Apply now works on top of them: leave Cockpit FOV at 48 to keep the mod's FOV, or set your own.
-          - **FM5 Car Importer:** cars it adds after an Apply are kept, car mods are no longer applied twice (which failed with \"UNIQUE constraint failed\"), and Restore originals goes back to stock again.
-          - **Fixed** Apply failing with a Test-Path error when data\bin has no azimuth-tls.dll.
-          - Diagnose no longer reports another mod's files as the cause unless Apply actually failed on them."
+          - **Fixed Apply changing the wrong game** when Azimuth also lists FH2 Presents Fast & Furious (Spire): the tool now only uses Forza Horizon 2 (Anthem), and refuses a backup_original that was made from another game.
+          - Diagnose lists every game folder in azimuth.ini and which game it is."

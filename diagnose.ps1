@@ -53,9 +53,16 @@ Get-ChildItem $root | Sort-Object LastWriteTime | ForEach-Object { Say ('   {0:y
 
 # the game, found the same way as apply.ps1
 $candidates = $folders + @(Get-ChildItem $root -Directory | ForEach-Object FullName)
-$manifestFile = $candidates | ForEach-Object { Join-Path ([IO.Path]::Combine($root, $_)) 'Mount\media\zipmanifest.xml' } | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+function IsFH2($manifest) { $appx = Join-Path (Split-Path (Split-Path $manifest)) 'AppxManifest.xml'; (Test-Path -LiteralPath $manifest) -and (-not (Test-Path -LiteralPath $appx) -or [IO.File]::ReadAllText($appx) -match '<Identity[^>]*Name="Anthem"') }
+Say 'Each azimuth.ini folder:'
+foreach ($f in $folders | Select-Object -Unique) {
+  $dir = [IO.Path]::Combine($root, $f); $mount = Join-Path $dir 'Mount'; $appx = Join-Path $mount 'AppxManifest.xml'
+  $id = if (Test-Path -LiteralPath $appx) { [regex]::Match([IO.File]::ReadAllText($appx), '<Identity[^>]*Name="([^"]+)"[^>]*Version="([^"]+)"').Groups[1..2].Value -join ' ' } else { 'no Mount\AppxManifest.xml' }
+  Say "   $f  ->  $(if (-not (Test-Path -LiteralPath $dir)) { 'FOLDER MISSING' } elseif (-not (Test-Path -LiteralPath $mount)) { 'no Mount folder; contains: ' + ((Get-ChildItem -LiteralPath $dir | Select-Object -First 12 | ForEach-Object Name) -join ', ') } else { "$id, Mount\media\zipmanifest.xml $(if (Test-Path -LiteralPath "$mount\media\zipmanifest.xml") { 'found' } else { 'MISSING' })" })"
+}
+$manifestFile = $candidates | ForEach-Object { Join-Path ([IO.Path]::Combine($root, $_)) 'Mount\media\zipmanifest.xml' } | Where-Object { IsFH2 $_ } | Select-Object -First 1
 Say ''
-if (-not $manifestFile) { Say 'GAME NOT FOUND: no Mount\media\zipmanifest.xml in the azimuth.ini folder or beside azimuth.exe' 'Red' }
+if (-not $manifestFile) { Say 'GAME NOT FOUND: no FH2 (Anthem) Mount\media\zipmanifest.xml in the azimuth.ini folders or beside azimuth.exe' 'Red' }
 else {
   $media = Split-Path $manifestFile; $mount = Split-Path $media
   Say "Game folder:    $(Split-Path $mount)"

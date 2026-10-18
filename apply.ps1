@@ -11,8 +11,10 @@ $root   = Split-Path $PSScriptRoot
 $azIni = Join-Path $root 'data\azimuth.ini'
 $azText = if (Test-Path $azIni) { [IO.File]::ReadAllText($azIni) } else { '' }
 $candidates = @([regex]::Matches($azText, '(?m)^(?:folder|game_folder)=(.+?)\s*$') | ForEach-Object { $_.Groups[1].Value.Trim('"') }) + @(Get-ChildItem $root -Directory | ForEach-Object FullName)
-$manifestFile = $candidates | ForEach-Object { Join-Path ([IO.Path]::Combine($root, $_)) 'Mount\media\zipmanifest.xml' } | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-if (-not $manifestFile) { throw "game not found: put the FH2 Mods folder next to azimuth.exe, and add the game in Azimuth and start it once" }
+# only FH2 itself (package Anthem): Azimuth may also list FH2 Presents Fast & Furious (Spire), whose files have the same names
+function IsFH2($manifest) { $appx = Join-Path (Split-Path (Split-Path $manifest)) 'AppxManifest.xml'; (Test-Path -LiteralPath $manifest) -and (-not (Test-Path -LiteralPath $appx) -or [IO.File]::ReadAllText($appx) -match '<Identity[^>]*Name="Anthem"') }
+$manifestFile = $candidates | ForEach-Object { Join-Path ([IO.Path]::Combine($root, $_)) 'Mount\media\zipmanifest.xml' } | Where-Object { IsFH2 $_ } | Select-Object -First 1
+if (-not $manifestFile) { throw "game not found: put the FH2 Mods folder next to azimuth.exe, and add Forza Horizon 2 (the Anthem folder) in Azimuth and start it once" }
 $media  = Split-Path $manifestFile
 $gameFolder = Split-Path (Split-Path $media)   # full path; ExtraOptions accepts absolute folders
 $backup = Join-Path $root 'backup_original\media'
@@ -26,6 +28,13 @@ New-Item -ItemType Directory -Force $backup | Out-Null
 foreach ($f in $zips + $loose + $tracks + 'zipmanifest.xml') {
   $orig = Join-Path $backup $f
   if (-not (Test-Path $orig)) { New-Item -ItemType Directory -Force (Split-Path $orig) | Out-Null; Copy-Item (Join-Path $media $f) $orig }   # backup = untouched original
+}
+# up to v1.0.6 the backup could come from FH2 Presents Fast & Furious, and putting it into FH2 breaks the game; its zip list is different
+# ponytail: a threshold, so a mod that added a few zips to media's manifest still passes
+$ownZips = [regex]::Escape('path="game:\media\') + '(' +(($zips | ForEach-Object { [regex]::Escape($_.ToLower()) }) -join '|') + ')"'
+$rest = { param($f) @([IO.File]::ReadAllLines($f) | Where-Object { $_ -match '<Zip ' -and $_ -notmatch $ownZips }) }
+if (@(Compare-Object (& $rest (Join-Path $backup 'zipmanifest.xml')) (& $rest $manifestFile)).Count -gt 50) {
+  throw "backup_original next to azimuth.exe was made from another game, not this FH2. If an older FH2 Mods changed FH2 Presents Fast & Furious, press Restore originals in that older version first. Then delete the backup_original folder and Apply again"
 }
 # ExtraOptions 0.2.98 with this tool's additions (ghost cars, keyboard keys, world keys, sky road) is a winmm.dll
 # next to azimuth.exe with its ini beside it. Azimuth's TLS helper in data\bin goes back to stock, since an

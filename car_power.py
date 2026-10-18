@@ -19,7 +19,8 @@ def find_game_db():
         pass
     for folder in folders + glob.glob(os.path.join(ROOT, '*')):
         db = os.path.join(ROOT, folder, 'Mount', 'media', 'stripped', 'gamedbRC.slt')   # join keeps absolute folders as they are
-        if os.path.exists(db): return db
+        appx = os.path.join(ROOT, folder, 'Mount', 'AppxManifest.xml')   # only FH2 itself (Anthem), not FH2 Presents Fast & Furious (Spire)
+        if os.path.exists(db) and (not os.path.exists(appx) or re.search(r'<Identity[^>]*Name="Anthem"', open(appx, encoding='utf-8', errors='ignore').read())): return db
 
 DB = find_game_db()
 if not DB: sys.exit('game not found: put the FH2 Mods folder next to azimuth.exe, and add the game in Azimuth and start it once')

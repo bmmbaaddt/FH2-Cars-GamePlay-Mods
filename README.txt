@@ -140,8 +140,13 @@ game files and shows what is different.
       something else before this tool made its backup. Put the original file
       back from your game download, delete the same file from
       <Azimuth folder>\backup_original\media, then Apply again.
-  "game not found"  put FH2 Mods next to azimuth.exe, add the game in
-      Azimuth and start it once.
+  "game not found"  put FH2 Mods next to azimuth.exe, add Forza Horizon 2
+      (the Anthem_1.0.0.64 folder) in Azimuth and start it once. FH2
+      Presents Fast & Furious (Spire) is not supported.
+  "backup_original ... was made from another game"  an older version (up to
+      v1.0.6) changed FH2 Presents Fast & Furious instead of FH2. Press
+      Restore originals in that older version, delete backup_original next
+      to azimuth.exe, then Apply with this version.
   Empty car list  install Python 3 with "Add python.exe to PATH".
 
 
