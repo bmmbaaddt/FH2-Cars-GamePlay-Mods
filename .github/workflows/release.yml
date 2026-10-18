@@ -25,4 +25,8 @@ jobs:
 
           **What's new**
           - **Fixed Apply changing the wrong game** when Azimuth also lists FH2 Presents Fast & Furious (Spire): the tool now only uses Forza Horizon 2 (Anthem), and refuses a backup_original that was made from another game.
+          - **Fixed the Skill Legend perk (x6) capping the skill chain at x6** when Highest chain multiplier is set higher: with the perk it now goes one above your setting.
+          - **Car mods work when a car mod moved the game database** into mediaoverride (they failed with \"game not found\").
+          - **New: Random car in game:** in My Cars, click the right stick (or press R) to jump to a random car of your garage. The FH2 Mods window also has a Random car from my garage button.
+          - **Rev limit now goes up to x2**: higher values crashed the game (cars already set higher are applied at x2).
           - Diagnose lists every game folder in azimuth.ini and which game it is."

@@ -30,6 +30,8 @@ extern PatchDefinition aero_tuning_hook_patches[2];
 void aero_tuning_prepare_hooks(unsigned char *image);
 extern PatchDefinition autodrive_hook_patches[12];
 extern PatchDefinition world_keys_hook_patches[2];
+extern PatchDefinition random_car_hook_patches[2];
+void random_car_prepare_hooks(unsigned char *image);
 extern PatchDefinition ghost_traffic_patches[2];
 extern PatchDefinition sky_road_hook_patches[3];
 void ghost_traffic_prepare_patch(const ModOptions *options);

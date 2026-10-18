@@ -47,6 +47,7 @@ COMMON_SOURCES = [
     "features/vehicle_controls.c",
     "features/blinkers.c",
     "features/world_keys.c",
+    "features/random_car.c",
     "features/ghost_traffic.c",
     "features/sky_road.c",
     "features/aero_tuning.c",

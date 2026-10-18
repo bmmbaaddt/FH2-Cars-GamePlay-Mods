@@ -16,8 +16,9 @@ A settings window for **Forza Horizon 2 (Xbox One)** running on **Azimuth**. Cha
 | Money | CR per level-up, CR per km driven in races |
 | Skills | Skill points and chain XP multipliers, highest chain multiplier, seconds allowed between skills, crashes not ending the skill chain |
 | Cockpit camera | Field of view and seat position |
-| Car mods | Pick any car (the traffic bus and box truck too) and set power, air drag, downforce, tire grip, brakes, turbo boost, gearing and rev limit (x1 = stock, up to x100), and the number of forward gears (up to 8) |
+| Car mods | Pick any car (the traffic bus and box truck too) and set power, air drag, downforce, tire grip, brakes, turbo boost, gearing and rev limit (x1 = stock, up to x100; rev limit up to x2, the game crashes above that), and the number of forward gears (up to 8) |
 
+- **Random car from my garage** picks one of the cars you own (read from your save) and shows it, so you know what to drive next.
 - **Restore originals** puts every game file back in one click, including the original ExtraOptions.
 - The original game files are backed up on first run, and every Apply rebuilds from them, so settings never stack up.
 - Refuses to change anything while the game is running.
@@ -32,6 +33,8 @@ A settings window for **Forza Horizon 2 (Xbox One)** running on **Azimuth**. Cha
 | `Q` | Left indicator (press again to switch off) |
 | `E` | Right indicator (press again to switch off) |
 | `H` | Hazard lights (press again to switch off) |
+
+**In My Cars** (the garage car list, from the main menu or the pause menu): click the **right stick** or press **`R`** to jump to a random car of your garage, then press A to drive it.
 
 You can change these keys in `FH2_ExtraOptions.ini` next to `azimuth.exe`, section `[Keyboard]`: use a letter, a digit, F1–F12, or `off`. FH2 has no horn, so there is no horn key.
 
@@ -140,7 +143,7 @@ A file placed at `FH2 Mods\files\<zip name>\<file name>` replaces that file insi
 | `settings.json` | The window's values |
 | `cars.json` | Per-car multipliers |
 | `Diagnose.bat`, `diagnose.ps1` | Read-only check when Apply fails; writes `diagnose.txt` |
-| `ExtraOptions\winmm.dll` | ExtraOptions 0.2.98 with ghost cars, keyboard keys, world keys and sky road added |
+| `ExtraOptions\winmm.dll` | ExtraOptions 0.2.98 with ghost cars, keyboard keys, world keys, sky road and random car added |
 | `ExtraOptions\FH2_ExtraOptions.ini` | Its default settings |
 | `ExtraOptions\azimuth-tls.stock.dll` | Azimuth's own TLS helper, put back in `data\bin` in place of an older ExtraOptions |
 | `ExtraOptions\source\` | Its source code (GPL-3) |

@@ -20,7 +20,8 @@ def find_game_db():
     for folder in folders + glob.glob(os.path.join(ROOT, '*')):
         db = os.path.join(ROOT, folder, 'Mount', 'media', 'stripped', 'gamedbRC.slt')   # join keeps absolute folders as they are
         appx = os.path.join(ROOT, folder, 'Mount', 'AppxManifest.xml')   # only FH2 itself (Anthem), not FH2 Presents Fast & Furious (Spire)
-        if os.path.exists(db) and (not os.path.exists(appx) or re.search(r'<Identity[^>]*Name="Anthem"', open(appx, encoding='utf-8', errors='ignore').read())): return db
+        # the game's manifest, not its database: a car mod may have moved the database into mediaoverride
+        if os.path.exists(os.path.join(os.path.dirname(os.path.dirname(db)), 'zipmanifest.xml')) and (not os.path.exists(appx) or re.search(r'<Identity[^>]*Name="Anthem"', open(appx, encoding='utf-8', errors='ignore').read())): return db
 
 DB = find_game_db()
 if not DB: sys.exit('game not found: put the FH2 Mods folder next to azimuth.exe, and add the game in Azimuth and start it once')
@@ -31,10 +32,28 @@ TURBO_TABLES = ['List_UpgradeEngineTurboSingle', 'List_UpgradeEngineTurboTwin', 
 NOT_ROAD_TIRES = ('rally', 'offroad', 'drift', 'snow', 'drag')
 FIRST_NEW_TIRE = 100   # cloned tire compounds get ids from here, one per car
 
+def save_garage():
+    """(CarId, Engine, Drivetrain, Transmission) of every car in the newest save's garage."""
+    dbs = glob.glob(os.path.join(SAVES, '**', 'revisions', '*', 'data', 'PlayerDatabase'), recursive=True)
+    if not dbs: return []
+    blob = open(max(dbs, key=os.path.getmtime), 'rb').read()
+    tmp = os.path.join(tempfile.mkdtemp(), 'save.sqlite')
+    open(tmp, 'wb').write(blob[8:8 + struct.unpack('<I', blob[4:8])[0]])
+    s = sqlite3.connect(tmp)
+    rows = s.execute('select CarId, Engine, Drivetrain, Transmission from Career_Garage').fetchall()
+    s.close(); shutil.rmtree(os.path.dirname(tmp))
+    return rows
+
+if '--random' in sys.argv:   # a random car from the garage, for the window to show; reads the save only
+    import random
+    rows = save_garage()
+    if not rows: sys.exit('no save found: play the game once first')
+    print(random.choice(rows)[0]); sys.exit()
+
 if '--list' not in sys.argv:
     running = subprocess.run(['powershell', '-NoProfile', '-Command', '(Get-Process azimuth -ErrorAction SilentlyContinue).Path'], capture_output=True, text=True).stdout
     if any(os.path.normcase(p).startswith(os.path.normcase(ROOT + os.sep)) for p in running.splitlines()): sys.exit('close the game first')
-if not os.path.exists(ORIG): os.makedirs(os.path.dirname(ORIG), exist_ok=True); shutil.copy2(DB, ORIG)
+if os.path.exists(DB) and not os.path.exists(ORIG): os.makedirs(os.path.dirname(ORIG), exist_ok=True); shutil.copy2(DB, ORIG)
 
 # A car mod in ExtraOptions' override folders (mediaoverride > mediapc > media) ships its own database, which the game
 # reads instead: car mods go into that copy, rebuilt from a backup of it. When the copy is neither that backup nor what
@@ -66,7 +85,7 @@ def merge_changes(base, before, after):
 for folder in ('mediaoverride', 'mediapc'):
     override = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(DB))), folder, 'stripped', 'gamedbRC.slt')
     if os.path.exists(override):
-        if '--list' not in sys.argv: shutil.copy2(ORIG, DB)   # the masked media copy goes back to stock
+        if '--list' not in sys.argv and os.path.exists(ORIG): shutil.copy2(ORIG, DB)   # the masked media copy goes back to stock
         DB, ORIG, WRITTEN = override, os.path.join(ROOT, 'backup_original', folder, 'gamedbRC.slt'), os.path.join(ROOT, 'backup_original', folder, 'gamedbRC.written')
         current = sha(DB)
         if not os.path.exists(ORIG):
@@ -76,6 +95,8 @@ for folder in ('mediaoverride', 'mediapc'):
             if os.path.exists(WRITTEN + '.slt'): merge_changes(ORIG, WRITTEN + '.slt', DB)
             else: shutil.copy2(DB, ORIG)
         break
+
+if not os.path.exists(ORIG): sys.exit(r'game database missing: put the original Mount\media\stripped\gamedbRC.slt back from your game download')
 
 if '--list' in sys.argv:
     g = sqlite3.connect(f'file:{ORIG}?mode=ro', uri=True)
@@ -89,14 +110,7 @@ if '--restore' in sys.argv: sys.exit('restored the original game database')
 
 def installed_parts():
     """car id -> engine id, drivetrain id, transmission row actually fitted in the newest save (swaps differ from stock)."""
-    dbs = glob.glob(os.path.join(SAVES, '**', 'revisions', '*', 'data', 'PlayerDatabase'), recursive=True)
-    if not dbs: return {}, {}, {}
-    blob = open(max(dbs, key=os.path.getmtime), 'rb').read()
-    tmp = os.path.join(tempfile.mkdtemp(), 'save.sqlite')
-    open(tmp, 'wb').write(blob[8:8 + struct.unpack('<I', blob[4:8])[0]])
-    s = sqlite3.connect(tmp)
-    rows = s.execute('select CarId, Engine, Drivetrain, Transmission from Career_Garage').fetchall()
-    s.close(); shutil.rmtree(os.path.dirname(tmp))
+    rows = save_garage()
     return ({car: db.execute('select EngineID from List_UpgradeEngine where Id=?', (e,)).fetchone()[0] for car, e, d, g in rows if e != -1},
             {car: db.execute('select DrivetrainID from List_UpgradeDrivetrain where Id=?', (d,)).fetchone()[0] for car, e, d, g in rows if d != -1},
             {car: g for car, e, d, g in rows if g != -1})
@@ -128,8 +142,9 @@ for n, (cid, m) in enumerate(cars.items()):
             db.execute(f'update {t} set MaxScale=MaxScale*?, PowerMaxScale=PowerMaxScale*0.7, MinScale=max(MinScale, 1.0) where EngineID=?', (m['turbo'], engine))
         boosted.add(engine)
     # rev limit: the redline and the torque curve's rpm range stretch together, so the engine pulls to the new limit
-    if m.get('redline', 1) != 1 and engine not in revved:
-        db.execute('update List_UpgradeEngineCamshaft set RedlineRPM=RedlineRPM*?, TorqueCurveMaxRPM=TorqueCurveMaxRPM*? where EngineID=?', (m['redline'], m['redline'], engine))
+    redline = min(m.get('redline', 1), 2)   # the game crashes above x2
+    if redline != 1 and engine not in revved:
+        db.execute('update List_UpgradeEngineCamshaft set RedlineRPM=RedlineRPM*?, TorqueCurveMaxRPM=TorqueCurveMaxRPM*? where EngineID=?', (redline, redline, engine))
         revved.add(engine)
     # gearing: a shorter final drive makes every gear taller (higher top speed, slower acceleration) on every
     # transmission of the fitted drivetrain; in-game gear tuning still works on top
@@ -148,6 +163,9 @@ for n, (cid, m) in enumerate(cars.items()):
         db.execute(f'update List_UpgradeDrivetrainTransmission set NumGears=?, {", ".join(f"GearRatio{k + 1}=?" for k in range(8))} where Id=?', (n + 1, *ratios, box))
         regeared.add(box)
     print(cid, m, 'tire' if tire else 'no road tire found')
+# the Skill Legend perk's x6 is a fixed cap that replaces apply.ps1's MaxMultiplier, so it stays one above that
+top = json.load(open(os.path.join(HERE, 'settings.json'), encoding='utf-8-sig')).get('MaxSkillMultiplier', 5)
+db.execute("update Perks set Modifier=? where Name='Skill Legend'", (max(6.0, top + 1.0),))
 db.commit()
 assert db.execute('pragma integrity_check').fetchone()[0] == 'ok'
 db.close()

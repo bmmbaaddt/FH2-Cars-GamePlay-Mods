@@ -64,8 +64,11 @@ Car mods       pick a car, set multipliers (x1 = stock). Grip and brakes act on 
                Turbo only does something on a turbocharged engine.
                Gearing (higher = taller gears, more top speed) and rev limit
                also affect other cars that share the same swap part.
-               Multipliers go up to x100. Forward gears: 1 = stock gearbox,
-               up to 8. The traffic bus and box truck are in the list too.
+               Multipliers go up to x100, rev limit up to x2 (the game
+               crashes above that). Forward gears: 1 = stock gearbox, up
+               to 8. The traffic bus and box truck are in the list too.
+               "Random car from my garage" picks a car you own (from your
+               save) and shows it; choose that car in the game's garage.
 
 Very high power on a car with stock tires and rear-wheel drive will mostly
 spin the wheels. Raise grip and brakes along with power.
@@ -81,6 +84,8 @@ While driving (always on):
   Q        left indicator (press again to switch off)
   E        right indicator (press again to switch off)
   H        hazard lights (press again to switch off)
+In My Cars (the garage car list, from the main menu or the pause menu):
+  R or right stick click   jump to a random car of your garage
 Change them in FH2_ExtraOptions.ini next to azimuth.exe, section [Keyboard]
 (a letter, a digit, F1-F12, or off). FH2 has no horn.
 
@@ -186,7 +191,8 @@ settings.json                 the window's values
 cars.json                     per-car multipliers
 Diagnose.bat, diagnose.ps1    read-only check when Apply fails
 ExtraOptions\winmm.dll        ExtraOptions 0.2.98 with ghost cars, keyboard
-                              keys, world keys and sky road added
+                              keys, world keys, sky road and random
+                              car added
 ExtraOptions\FH2_ExtraOptions.ini   its default settings
 ExtraOptions\azimuth-tls.stock.dll  Azimuth's own TLS helper, put back in
                               data\bin in place of an older ExtraOptions

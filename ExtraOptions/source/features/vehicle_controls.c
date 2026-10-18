@@ -125,6 +125,7 @@ void vehicle_controls_bind(unsigned char *image) {
     blinkers_bind(image, clock_milliseconds);
     roof_fade_prepare_hook(image);
     world_keys_prepare_hook(image);
+    random_car_prepare_hooks(image);
     uintptr_t original = (uintptr_t)(image + 0x2a9400);
     uintptr_t replacement = (uintptr_t)vehicle_update;
     memory_copy(original_callback, &original, 8);

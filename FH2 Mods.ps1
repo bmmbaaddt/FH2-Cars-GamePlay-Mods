@@ -71,13 +71,14 @@ $carBox = New-Object Windows.Forms.ComboBox -Property @{ Width = 260; AutoComple
 $carList | ForEach-Object { [void]$carBox.Items.Add($_.name) }   # item index = index in $carList
 function SelectedCar { if ($carBox.SelectedIndex -ge 0) { [int]$carList[$carBox.SelectedIndex].id } }
 $grid.Controls.Add($carBox)
-$carFields = [ordered]@{ power = 'Power  (x)'; drag = 'Air drag  (x, lower = faster)'; downforce = 'Downforce  (x)'; grip = 'Tire grip  (x)'; brakes = 'Brake strength  (x)'; turbo = 'Turbo boost  (x, turbo cars only)'; gearing = 'Gearing  (x, higher = taller gears, more top speed)'; redline = 'Rev limit  (x)'; gears = 'Forward gears  (1 = stock gearbox, up to 8)' }
+$carFields = [ordered]@{ power = 'Power  (x)'; drag = 'Air drag  (x, lower = faster)'; downforce = 'Downforce  (x)'; grip = 'Tire grip  (x)'; brakes = 'Brake strength  (x)'; turbo = 'Turbo boost  (x, turbo cars only)'; gearing = 'Gearing  (x, higher = taller gears, more top speed)'; redline = 'Rev limit  (x, up to 2)'; gears = 'Forward gears  (1 = stock gearbox, up to 8)' }
 $carInputs = @{}
 $loading = $false
 foreach ($k in $carFields.Keys) {
   $grid.Controls.Add((New-Object Windows.Forms.Label -Property @{ Text = $carFields[$k]; AutoSize = $true; Anchor = 'Left'; Margin = '0,6,12,0' }))
   $n = New-Object Windows.Forms.NumericUpDown -Property @{ Minimum = 0.1; Maximum = 100; DecimalPlaces = 2; Increment = 0.1; Width = 160; Value = 1; Enabled = $false }
   if ($k -eq 'gears') { $n.Minimum = 1; $n.Maximum = 8; $n.DecimalPlaces = 0; $n.Increment = 1 }   # a count, not a multiplier
+  if ($k -eq 'redline') { $n.Maximum = 2 }   # the game crashes above x2
   $n.Add_ValueChanged({
     $id = SelectedCar
     if ($loading -or $null -eq $id) { return }
@@ -99,12 +100,22 @@ $carBox.Add_SelectedIndexChanged({
   if ($null -eq $id) { return }
   $m = $carMods[$id]
   $script:loading = $true
-  foreach ($f in $carFields.Keys) { $carInputs[$f].Enabled = $true; $carInputs[$f].Value = [decimal]$(if ($m -and $null -ne $m[$f]) { $m[$f] } else { 1 }) }   # cars.json from before a field existed: x1
+  foreach ($f in $carFields.Keys) { $carInputs[$f].Enabled = $true; $carInputs[$f].Value = [Math]::Min($carInputs[$f].Maximum, [decimal]$(if ($m -and $null -ne $m[$f]) { $m[$f] } else { 1 })) }   # cars.json from before a field existed: x1
   $script:loading = $false
 })
 $resetCar = New-Object Windows.Forms.Button -Property @{ Text = 'Set this car back to stock'; AutoSize = $true }
 $resetCar.Add_Click({ foreach ($f in $carFields.Keys) { $carInputs[$f].Value = 1 } })
 $grid.Controls.Add($resetCar); $grid.SetColumnSpan($resetCar, 2)
+# a random car from the save's garage, shown here; the game has no way to be told to switch cars
+$randomCar = New-Object Windows.Forms.Button -Property @{ Text = 'Random car from my garage'; AutoSize = $true }
+$randomCar.Add_Click({
+  $out = & python -I (Join-Path $dir 'car_power.py') --random 2>&1 | Select-Object -Last 1
+  $i = 0..($carList.Count - 1) | Where-Object { "$($carList[$_].id)" -eq "$out" } | Select-Object -First 1
+  if ($null -eq $i) { $status.ForeColor = 'Firebrick'; $status.Text = "Random car: $out"; return }
+  $carBox.SelectedIndex = $i
+  $status.ForeColor = 'DarkGreen'; $status.Text = "Drive the $($carList[$i].name): pick it in your garage in game."
+})
+$grid.Controls.Add($randomCar); $grid.SetColumnSpan($randomCar, 2)
 ShowModded
 
 $note = New-Object Windows.Forms.Label -Property @{ AutoSize = $true; MaximumSize = '520,0'; ForeColor = [Drawing.Color]::DimGray; Margin = '0,10,0,0'
