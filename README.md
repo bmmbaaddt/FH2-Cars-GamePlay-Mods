@@ -120,6 +120,10 @@ Copy **Diagnose.bat** into the FH2 Mods folder if it isn't there, double-click i
 
 Car mods that add cars through ExtraOptions' `Mount\mediaoverride` or `Mount\mediapc` folder (for example the Rolls-Royce Wraith) ship their own `zipmanifest.xml` and game database. Apply keeps that `zipmanifest.xml` in step with this tool's zips and writes car mods into that database, so the added car stays, shows up in the car list and can be modded too. Install or update such a mod with the game closed, then press Apply again.
 
+- **FM5 Car Importer:** cars it adds after an Apply are kept, and car mods are not applied twice. Press Restore originals before using its `Uninstall.ps1`, then Apply again.
+- **One database:** the game reads only one car database (`mediaoverride` before `mediapc`). Two mods that each ship a full database hide each other's cars, so keep added cars in one folder.
+- **Cockpit FOV mods** that change `Camera.zip` work too: leave Cockpit FOV at 48 to keep the mod's value, or set your own.
+
 ## File overrides (optional)
 
 A file placed at `FH2 Mods\files\<zip name>\<file name>` replaces that file inside the game's zip on Apply, for example `FH2 Mods\files\Camera.zip\CameraPhysics.xml`. The tool's own settings are still applied on top.

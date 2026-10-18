@@ -124,9 +124,8 @@ foreach ($o in $others) {
 
 Say ''
 if ($manifestFile -and $badBackups) {
-  Say "CAUSE: the tool's backup already holds modified files: $($badBackups -join ', ')." 'Yellow'
-  Say 'They were changed before this copy of the tool first ran (by another mod tool, by hand, or by an Apply from another Azimuth folder listed above).' 'Yellow'
-  Say 'FIX: put the genuine files back in the game (from the original game download, or copy backup_original from the other Azimuth folder), delete those files from backup_original, then Apply again.' 'Yellow'
+  Say "The tool's backup holds files another mod changed: $($badBackups -join ', ')." 'Yellow'
+  Say 'That is fine (Apply builds on top of them) unless Apply failed with "pattern not found" in one of them. Then: put the genuine files back in the game (from the original game download, or copy backup_original from the other Azimuth folder), delete those files from backup_original, and Apply again.' 'Yellow'
 } elseif ($manifestFile) { Say 'The backups are genuine, so they are not the cause. Send diagnose.txt.' 'Green' }
 
 $reportPath = Join-Path $PSScriptRoot 'diagnose.txt'

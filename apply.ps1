@@ -36,7 +36,7 @@ $winmm      = Join-Path $root 'winmm.dll'
 $eoIni      = Join-Path $root 'FH2_ExtraOptions.ini'
 $eoBackups  = Join-Path $root 'backup_original\ExtraOptions'
 $tlsTarget  = 'azimuth-tls.dll.original', 'azimuth-tls.dll' | ForEach-Object { Join-Path $root "data\bin\$_" } | Where-Object { Test-Path $_ } | Select-Object -First 1
-function FileHas($path, $text) { (Test-Path $path) -and [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($path)).Contains($text) }
+function FileHas($path, $text) { $path -and (Test-Path $path) -and [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($path)).Contains($text) }
 function SameFile($a, $b) { (Test-Path $a) -and (Test-Path $b) -and (Get-FileHash $a).Hash -eq (Get-FileHash $b).Hash }
 # Car mods in ExtraOptions' override folders ship a full zipmanifest.xml that the game reads instead of media's,
 # so its entries for the zips rebuilt here get the same directory positions (unless the mod has its own copy of that zip).
@@ -112,13 +112,7 @@ function ScaleTraffic([double]$factor) {
 $freeRoam = [double]$s.FreeRoamTrafficPercent / 100
 $chainTime = if ($s.SkillChainSeconds -gt 0) { "<property id=""MaxTimeBetweenSkills"" value=""$(Num $s.SkillChainSeconds)""/>" } else { '' }   # 0 = the game's own
 $patches = @{
-  'Camera.zip' = @{
-    'CameraSettings.ini' = @(
-      ,@('(?m)^Driver\\FOV 48\b', "Driver\FOV $(Num $s.CockpitFOV)")
-      ,@('(?m)^Driver\\DefaultOffsetFromSteeringWheelZ 0\b', "Driver\DefaultOffsetFromSteeringWheelZ $(Num $s.SeatOffsetZ)")
-      ,@('(?m)^Driver\\DefaultOffsetFromSteeringWheelY 0\b', "Driver\DefaultOffsetFromSteeringWheelY $(Num $s.SeatOffsetY)")
-    )
-  }
+  'Camera.zip' = @{}
   'GameTunableSettings.zip' = @{
     'PlayerXPLevels.xml' = @(
       ,@('CreditRewardPerLevel="\d+"', "CreditRewardPerLevel=""$([long]$s.CreditsPerLevel)""")   # set outright, so a value another tool already changed is fine too
@@ -143,6 +137,12 @@ $patches = @{
     'AI/CarLoadingSettings.xml' = ,@('MaxActiveTraffic="18"', "MaxActiveTraffic=""$([Math]::Max(18, [int][Math]::Round(18 * $freeRoam)))""")
   }
 }
+# cockpit camera: set outright, so a value a cockpit FOV mod already changed is fine too; a stock setting leaves that mod's value alone
+$camera = @()
+foreach ($c in @(('FOV', $s.CockpitFOV, 48), ('DefaultOffsetFromSteeringWheelZ', $s.SeatOffsetZ, 0), ('DefaultOffsetFromSteeringWheelY', $s.SeatOffsetY, 0))) {
+  if ([double]$c[1] -ne $c[2]) { $camera += ,@("(?m)^Driver\\$($c[0]) -?[\d.]+(?=\s)", "Driver\$($c[0]) $(Num $c[1])") }
+}
+if ($camera.Count) { $patches['Camera.zip']['CameraSettings.ini'] = $camera }
 if (-not $s.RaceTraffic) {
   $patches['EntityModel.zip']['AI/DensitiesRace.xml'] = ScaleTraffic 0
   $patches['GameTunableSettings.zip']['CareerRaceModes.xml'] = ,@('HasTraffic="true"', 'HasTraffic="false"')

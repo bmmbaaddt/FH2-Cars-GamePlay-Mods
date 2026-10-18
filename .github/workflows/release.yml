@@ -24,7 +24,7 @@ jobs:
           gh release create "$GITHUB_REF_NAME" "FH2-Cars-GamePlay-Mods-${GITHUB_REF_NAME}.zip" --title "FH2 Cars & Gameplay Mods ${GITHUB_REF_NAME}" --notes "Extract the zip and put the **FH2 Mods** folder next to azimuth.exe. Requires Python 3 on PATH and **Azimuth 0.9.10**. See the README for setup and keyboard shortcuts.
 
           **What's new**
-          - Works on the new **ExtraOptions 0.2.98**: it is included as winmm.dll next to azimuth.exe, with ghost cars, keyboard keys (L/Q/E/H), Ctrl world keys and sky road added. An older ExtraOptions in data\bin is backed up and swapped for Azimuth's own helper; Restore originals puts it back.
-          - Everything new in 0.2.98 too: hold D-pad left/right for indicators, tap up for hazards, Return to Garage, aero tuning without Forza aero, new drift camera.
-          - **ForzaInfinity safe:** if ForzaInfinity (or any other ExtraOptions) is in data\bin, the FH2 Mods winmm.dll switches itself off, so the game is never patched twice and does not crash. The rest of the tool still works.
-          - Added-car mods in Mount\mediaoverride / mediapc (e.g. the Rolls-Royce Wraith) keep working: Apply keeps their zipmanifest.xml in step and the added car can be modded too."
+          - **Fixed \"pattern not found in CameraSettings.ini\"** with cockpit FOV mods. Apply now works on top of them: leave Cockpit FOV at 48 to keep the mod's FOV, or set your own.
+          - **FM5 Car Importer:** cars it adds after an Apply are kept, car mods are no longer applied twice (which failed with \"UNIQUE constraint failed\"), and Restore originals goes back to stock again.
+          - **Fixed** Apply failing with a Test-Path error when data\bin has no azimuth-tls.dll.
+          - Diagnose no longer reports another mod's files as the cause unless Apply actually failed on them."

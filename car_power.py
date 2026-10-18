@@ -36,18 +36,44 @@ if '--list' not in sys.argv:
 if not os.path.exists(ORIG): os.makedirs(os.path.dirname(ORIG), exist_ok=True); shutil.copy2(DB, ORIG)
 
 # A car mod in ExtraOptions' override folders (mediaoverride > mediapc > media) ships its own database, which the game
-# reads instead: car mods go into that copy, rebuilt from a backup of it. The backup is taken again whenever the
-# copy is neither that backup nor what this script last wrote, i.e. the mod was installed or updated.
+# reads instead: car mods go into that copy, rebuilt from a backup of it. When the copy is neither that backup nor what
+# this script last wrote, the mod was installed or updated: the backup takes the mod's changes.
 WRITTEN = None
 def sha(path): return hashlib.sha256(open(path, 'rb').read()).hexdigest()
+
+def merge_changes(base, before, after):
+    """Adds to base what changed from before to after. Car importers (like the FM5 importer) add their cars to the
+    database the game reads, which already holds our car mods: only the importer's own rows reach the backup, so
+    our mods are not applied twice."""
+    tmp = base + '.new'; shutil.copy2(base, tmp)
+    g = sqlite3.connect(tmp)
+    g.execute('attach ? as b', (before,)); g.execute('attach ? as a', (after,))
+    for (t,) in g.execute("select name from a.sqlite_master where type='table'").fetchall():
+        if not g.execute("select 1 from main.sqlite_master where type='table' and name=?", (t,)).fetchone():
+            g.execute(g.execute('select sql from a.sqlite_master where name=?', (t,)).fetchone()[0])
+            g.execute(f'insert into main."{t}" select * from a."{t}"')
+        elif not g.execute("select 1 from b.sqlite_master where type='table' and name=?", (t,)).fetchone():
+            g.execute(f'insert or replace into main."{t}" select * from a."{t}"')
+        else:
+            same = ' and '.join(f'x."{c}" is "{t}"."{c}"' for _, c, *_ in g.execute(f'pragma a.table_info("{t}")'))
+            g.execute(f'delete from main."{t}" where exists (select 1 from (select * from b."{t}" except select * from a."{t}") x where {same})')
+            g.execute(f'insert or replace into main."{t}" select * from a."{t}" except select * from b."{t}"')
+    g.commit()
+    assert g.execute('pragma integrity_check').fetchone()[0] == 'ok'
+    g.close(); os.replace(tmp, base)
+
 for folder in ('mediaoverride', 'mediapc'):
     override = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(DB))), folder, 'stripped', 'gamedbRC.slt')
     if os.path.exists(override):
         if '--list' not in sys.argv: shutil.copy2(ORIG, DB)   # the masked media copy goes back to stock
         DB, ORIG, WRITTEN = override, os.path.join(ROOT, 'backup_original', folder, 'gamedbRC.slt'), os.path.join(ROOT, 'backup_original', folder, 'gamedbRC.written')
         current = sha(DB)
-        if not os.path.exists(ORIG) or current not in (sha(ORIG), open(WRITTEN).read() if os.path.exists(WRITTEN) else ''):
+        if not os.path.exists(ORIG):
             os.makedirs(os.path.dirname(ORIG), exist_ok=True); shutil.copy2(DB, ORIG)
+        elif current not in (sha(ORIG), open(WRITTEN).read() if os.path.exists(WRITTEN) else ''):
+            # ponytail: a row the mod changed that our car mods also changed keeps both changes; rare, a full re-import fixes it
+            if os.path.exists(WRITTEN + '.slt'): merge_changes(ORIG, WRITTEN + '.slt', DB)
+            else: shutil.copy2(DB, ORIG)
         break
 
 if '--list' in sys.argv:
@@ -124,5 +150,5 @@ for n, (cid, m) in enumerate(cars.items()):
 db.commit()
 assert db.execute('pragma integrity_check').fetchone()[0] == 'ok'
 db.close()
-if WRITTEN: open(WRITTEN, 'w').write(sha(DB))
+if WRITTEN: open(WRITTEN, 'w').write(sha(DB)); shutil.copy2(DB, WRITTEN + '.slt')   # the copy lets a later mod update be merged
 print(f'applied to {len(cars)} car(s)')

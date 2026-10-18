@@ -153,6 +153,14 @@ zipmanifest.xml and game database. Apply keeps that zipmanifest.xml in step
 with this tool's zips and writes car mods into that database, so the added
 car stays, shows up in the car list and can be modded too. Install or update
 such a mod with the game closed, then press Apply again.
+  FM5 Car Importer  cars it adds after an Apply are kept, and car mods are
+      not applied twice. Press Restore originals before using its
+      Uninstall.ps1, then Apply again.
+  One database  the game reads only one car database (mediaoverride before
+      mediapc). Two mods that each ship a full database hide each other's
+      cars, so keep added cars in one folder.
+  Cockpit FOV mods  that change Camera.zip work too: leave Cockpit FOV at 48
+      to keep the mod's value, or set your own.
 
 
 FILE OVERRIDES (optional)
