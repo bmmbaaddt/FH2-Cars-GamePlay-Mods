@@ -53,6 +53,16 @@ NumberRow 'SkillXPMultiplier' 'Skill chain XP  (x, 1 = normal)' 1 1000 0 10
 NumberRow 'MaxSkillMultiplier' 'Max chain multiplier  (normal 5)' 1 100 1 1
 NumberRow 'SkillChainSeconds' 'Seconds between skills to keep a chain  (0 = game''s own)' 0 60 1 1
 CheckRow 'CrashesKeepSkillChain' 'Crashes do not reset the skill chain'
+Section 'Packs  (for every car; a pack your garage uses can only be switched off after fitting the stock part)'
+foreach ($k in 'PackEngineSwaps', 'PackTrafficCars', 'PackFreeCars') { if ($null -eq $s.$k) { $s | Add-Member $k $false } }   # settings.json from before packs
+if ($null -eq $s.PackEngineParts) { $s | Add-Member PackEngineParts 0 }
+NumberRow 'PackEngineParts' 'Race+ engine parts: extra torque  (%, 0 = off)' 0 200 0 5
+CheckRow 'PackEngineSwaps' 'Engine swaps: every engine fits every car'
+CheckRow 'PackTrafficCars' 'Traffic and AI cars for sale in the Autoshow'
+CheckRow 'PackFreeCars' 'Free cars: every car in the Autoshow costs 1 CR'
+Section 'Overlay  (in-game menu: Insert; boost, nitrous, launch, drift, stunts, UFO, teleport, timers, gauges)'
+if ($null -eq $s.StartOverlay) { $s | Add-Member StartOverlay $true }   # settings.json from before the overlay
+CheckRow 'StartOverlay' 'Start the overlay with Apply && Play (the game must be in windowed or borderless mode)'
 Section 'Cockpit camera'
 NumberRow 'CockpitFOV' 'Cockpit FOV  (normal 48)' 30 100 0 1
 NumberRow 'SeatOffsetZ' 'Seat back/forward  (m, normal 0)' -1 1 2 0.05
@@ -150,9 +160,12 @@ Button 'Apply' { Save; [void](RunApply @()) }
 $impulse = Join-Path (Split-Path $launcher) 'SimpleImpulseH2'   # trigger rumble for Xbox controllers; waits for the game, then hooks it
 Button 'Apply && Play' { Save; if (RunApply @()) {
   Start-Process $launcher -WorkingDirectory (Split-Path $launcher)
+  if ($s.StartOverlay -and (Test-Path $overlay)) { Start-Process $overlay -WorkingDirectory $dir }
   if (Test-Path "$impulse\FH2TriggerBridge.dll") { Start-Process python "`"$impulse\source\fh2_trigger.py`"" -WorkingDirectory $impulse -WindowStyle Minimized }
   $form.Close() } }
 Button 'Restore originals' { [void](RunApply @('-Restore')) }
+$overlay = Join-Path $dir 'FH2 Mods Overlay.exe'
+if (Test-Path $overlay) { Button 'Overlay' { Start-Process $overlay -WorkingDirectory $dir; $status.ForeColor = 'DarkGreen'; $status.Text = 'Overlay started: press Insert in the game.' } }
 
 $form.Add_Load({
   # fit the content, but never beyond the screen; anything that doesn't fit scrolls

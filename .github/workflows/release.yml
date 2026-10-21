@@ -13,7 +13,7 @@ jobs:
       - name: Build zip
         run: |
           mkdir "FH2 Mods"
-          cp "FH2 Mods.bat" "FH2 Mods.ps1" README.txt apply.ps1 car_power.py cars.json settings.json Diagnose.bat diagnose.ps1 "FH2 Mods/"
+          cp "FH2 Mods.bat" "FH2 Mods.ps1" "FH2 Mods Overlay.exe" README.txt apply.ps1 car_power.py cars.json settings.json Diagnose.bat diagnose.ps1 "FH2 Mods/"
           cp LICENSE "FH2 Mods/LICENSE.txt"
           cp -r ExtraOptions "FH2 Mods/"
           zip -r "FH2-Cars-GamePlay-Mods-${GITHUB_REF_NAME}.zip" "FH2 Mods"
@@ -23,10 +23,13 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" "FH2-Cars-GamePlay-Mods-${GITHUB_REF_NAME}.zip" --title "FH2 Cars & Gameplay Mods ${GITHUB_REF_NAME}" --notes "Extract the zip and put the **FH2 Mods** folder next to azimuth.exe. Requires Python 3 on PATH and **Azimuth 0.9.10**. See the README for setup and keyboard shortcuts.
 
-          **What's new**
-          - **Fixed Apply changing the wrong game** when Azimuth also lists FH2 Presents Fast & Furious (Spire): the tool now only uses Forza Horizon 2 (Anthem), and refuses a backup_original that was made from another game.
-          - **Fixed the Skill Legend perk (x6) capping the skill chain at x6** when Highest chain multiplier is set higher: with the perk it now goes one above your setting.
-          - **Car mods work when a car mod moved the game database** into mediaoverride (they failed with \"game not found\").
-          - **New: Random car in game:** in My Cars, click the right stick (or press R) to jump to a random car of your garage. The FH2 Mods window also has a Random car from my garage button.
-          - **Rev limit now goes up to x2**: higher values crashed the game (cars already set higher are applied at x2).
-          - Diagnose lists every game folder in azimuth.ini and which game it is."
+          **What's new in 1.1.0**
+          - **New: in-game overlay** (press Insert while driving): boost, nitrous with pops and bangs, anti-lag, burnout, standing / rolling / wheelie launch, drift, more grip, super brakes, speed limiter, cruise control, barrel roll, 360, backflip, rocket, jump, instant stop, flip upright, air control, low gravity, UFO mode, ghost mode and 9 teleport spots. Every effect is put back when you pause, change car or switch it off.
+          - **New: run timers and drag tree**: 0-60 to 0-200 mph and 1/8 to 1 mile (or 0-100 to 0-400 km/h and 100 to 2000 m) with best times, a light tree with reaction times and your last 10 runs.
+          - **New: on-screen gauges**: speed and rev panel with shift flash, nitrous strip, compass, g-force, drift angle and score, trip and top speed. Move and resize them, pick your colour.
+          - **New: mph / km/h switch** for the gauges, the overlay settings and the run timers.
+          - **The window and the overlay work together**: the FH2 Mods window (bat) sets the game files (traffic, crashes, money, skills, camera, car mods, packs), the overlay changes your car live. Use both at once: boost and nitrous multiply the power your car mods give, and switching an effect off puts the car back to exactly what the window applied. Apply & Play can start the overlay for you.
+          - **New: packs** in the window: Race+ engine parts (an extra level of every engine part), engine swaps for every car, traffic and AI cars for sale, free cars. A pack your garage uses can't be switched off by accident.
+          - **Fixed: \"Car mods failed: NoneType object is not subscriptable\"** after switching car packs: cars and parts that are no longer in the game database are skipped.
+          - **Fixed: a failed Apply could poison the backup** of an added-cars database: the database is now built in a copy and only swapped in when everything worked.
+          - The game must run in windowed or borderless mode for the overlay to show."

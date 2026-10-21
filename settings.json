@@ -16,5 +16,10 @@
     "NoCrashSpin": false,
     "SlideOffWalls": false,
     "LightBreakables": false,
-    "WorldControls": false
+    "WorldControls": false,
+    "PackEngineParts": 0,
+    "PackEngineSwaps": false,
+    "PackTrafficCars": false,
+    "PackFreeCars": false,
+    "StartOverlay": true
 }

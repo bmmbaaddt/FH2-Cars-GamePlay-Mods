@@ -5,6 +5,24 @@ Change traffic, crashes, money, skills, the cockpit camera and per-car
 performance (power, drag, downforce, grip, brakes, turbo) from one window,
 and get keyboard keys for lights, indicators, time and weather.
 
+New in 1.1.0: an in-game overlay (press Insert while driving) with boost,
+nitrous, launch control, drift, stunts, UFO mode, teleport, cruise control,
+run timers, a drag light tree and on-screen gauges.
+
+TWO MENUS THAT WORK TOGETHER
+  FH2 Mods.bat (the window)  changes the game files: traffic, crashes,
+                             money, skills, camera, car mods, packs.
+                             Apply, then start the game. Saved in
+                             settings.json and cars.json.
+  Overlay (Insert in game)   changes your car live while you drive, no
+                             restart. Saved in overlay.ini.
+  Use both at once: set car mods and packs in the window, Apply & Play,
+  then tune on the road with the overlay. They never overwrite each other:
+  boost and nitrous multiply the car's power after its car mods, and
+  switching an effect off puts the car back to exactly what the window
+  applied. Apply & Play can start the overlay (tick it in the window), or
+  use the Overlay button.
+
 Not affiliated with Microsoft, Playground Games, Turn 10 or Azimuth.
 Azimuth's developer does not support modded setups: if something breaks,
 use "Restore originals" before asking them for help.
@@ -71,6 +89,14 @@ Car mods       pick a car, set multipliers (x1 = stock). Grip and brakes act on 
                to 8. The traffic bus and box truck are in the list too.
                "Random car from my garage" picks a car you own (from your
                save) and shows it; choose that car in the game's garage.
+Packs          for every car at once: Race+ engine parts (an extra level of
+               every engine part, with the extra torque you choose), engine
+               swaps (every engine fits every car), traffic and AI cars for
+               sale in the Autoshow, free cars (1 CR each). A pack your
+               garage uses can only be switched off after fitting the
+               stock part in game.
+Overlay        start the in-game overlay with Apply & Play, or the Overlay
+               button. See IN-GAME OVERLAY below.
 
 Very high power on a car with stock tires and rear-wheel drive will mostly
 spin the wheels. Raise grip and brakes along with power.
@@ -187,12 +213,50 @@ inside the game's zip on Apply, for example:
 The tool's own settings are still applied on top.
 
 
+IN-GAME OVERLAY
+---------------
+Press Insert in the game. The pill at the top says LIVE while you drive;
+effects pause while the menu is in front, so click the game to drive.
+The game must run windowed or borderless (Azimuth's display setting).
+
+  Insert            show / hide the menu
+  End               everything off
+  F6 / F7 / F8      boost on/off, less, more
+  9 (hold)          nitrous
+  Home              burnout (stopped)
+  F5 / F9 / F11     standing / rolling / wheelie launch
+  Delete            more grip (drift has no key by default)
+  F3                speed limiter
+  F10               cruise control (the brake cancels it)
+  F12               wheelie mode
+  F4                jump
+  1 / 2 / 3         barrel roll / 360 spin / backflip
+  4 / 5             rocket / instant stop
+  Backspace         flip the car upright
+  6                 air control
+  Page Up / Down    low gravity / UFO mode (R / F or RB / LB up, down)
+  8 / 7             save a spot / teleport to it (9 spots)
+  0                 ghost mode
+  U                 switch mph / km/h
+
+Every key can be changed on the Keys tab. Keys only act while the game is
+in front, never with Ctrl or Alt held (the Ctrl world keys keep working).
+Effects change only your car, only while the overlay runs, and are put
+back when you pause, open the map or a menu, change car, press End, or
+close the overlay. The MPH / KM/H switch changes the gauges, the speed
+settings and the run timers (0-60 to 0-200 mph and 1/8 to 1 mile, or
+0-100 to 0-400 km/h and 100 to 2000 m). Stunts and the rocket need the car
+moving. Single-player only: not in online sessions with other players.
+
+
 FILES
 -----
 FH2 Mods.bat                  starts the window
 FH2 Mods.ps1                  the window
 apply.ps1                     writes the settings into the game files
-car_power.py                  writes car mods into the game database
+car_power.py                  writes car mods and packs into the game database
+FH2 Mods Overlay.exe          the in-game overlay (settings, keys, spots and
+                              best times in overlay.ini beside it)
 settings.json                 the window's values
 cars.json                     per-car multipliers
 Diagnose.bat, diagnose.ps1    read-only check when Apply fails
