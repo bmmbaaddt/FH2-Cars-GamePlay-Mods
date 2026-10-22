@@ -99,7 +99,7 @@ Start it from the window (**Overlay** button, or tick *Start the overlay with Ap
 | `F12` | Wheelie mode |
 | `F4` | Jump |
 | `1` / `2` / `3` | Barrel roll / 360 spin / backflip |
-| `4` / `5` | Rocket / instant stop |
+| `4` (or LS click) / `5` | Rocket / instant stop |
 | `Backspace` | Flip the car upright |
 | `6` | Air control |
 | `Page Up` / `Page Down` | Low gravity / UFO mode (`R` / `F` or RB / LB up and down) |

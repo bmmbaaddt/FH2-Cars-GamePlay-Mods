@@ -187,6 +187,7 @@ namespace FH2Overlay
             timeEndPeriod(1);
         }
         static string pending;
+        static bool lsWas;
 
         static void DeleteSpot()
         {
@@ -222,6 +223,9 @@ namespace FH2Overlay
                     input.StickX = Axis(p.LX); input.StickY = Axis(p.LY);
                     if ((p.Buttons & 0x0200) != 0) input.Down.Add("UfoUp");     // RB / LB climb and descend in UFO mode
                     if ((p.Buttons & 0x0100) != 0) input.Down.Add("UfoDown");
+                    bool ls = (p.Buttons & 0x0040) != 0;   // left stick click: rocket, like its key
+                    if (ls && !lsWas) input.Pressed.Add("Rocket");
+                    lsWas = ls;
                     break;
                 }
             if (Key(System.Windows.Forms.Keys.Left)) input.StickX = -1; if (Key(System.Windows.Forms.Keys.Right)) input.StickX = 1;

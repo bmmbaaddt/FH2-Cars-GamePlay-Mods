@@ -23,13 +23,9 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" "FH2-Cars-GamePlay-Mods-${GITHUB_REF_NAME}.zip" --title "FH2 Cars & Gameplay Mods ${GITHUB_REF_NAME}" --notes "Extract the zip and put the **FH2 Mods** folder next to azimuth.exe. Requires Python 3 on PATH and **Azimuth 0.9.10**. See the README for setup and keyboard shortcuts.
 
-          **What's new in 1.1.0**
-          - **New: in-game overlay** (press Insert while driving): boost, nitrous with pops and bangs, anti-lag, burnout, standing / rolling / wheelie launch, drift, more grip, super brakes, speed limiter, cruise control, barrel roll, 360, backflip, rocket, jump, instant stop, flip upright, air control, low gravity, UFO mode, ghost mode and 9 teleport spots. Every effect is put back when you pause, change car or switch it off.
-          - **New: run timers and drag tree**: 0-60 to 0-200 mph and 1/8 to 1 mile (or 0-100 to 0-400 km/h and 100 to 2000 m) with best times, a light tree with reaction times and your last 10 runs.
-          - **New: on-screen gauges**: speed and rev panel with shift flash, nitrous strip, compass, g-force, drift angle and score, trip and top speed. Move and resize them, pick your colour.
-          - **New: mph / km/h switch** for the gauges, the overlay settings and the run timers.
-          - **The window and the overlay work together**: the FH2 Mods window (bat) sets the game files (traffic, crashes, money, skills, camera, car mods, packs), the overlay changes your car live. Use both at once: boost and nitrous multiply the power your car mods give, and switching an effect off puts the car back to exactly what the window applied. Apply & Play can start the overlay for you.
-          - **New: packs** in the window: Race+ engine parts (an extra level of every engine part), engine swaps for every car, traffic and AI cars for sale, free cars. A pack your garage uses can't be switched off by accident.
-          - **Fixed: \"Car mods failed: NoneType object is not subscriptable\"** after switching car packs: cars and parts that are no longer in the game database are skipped.
-          - **Fixed: a failed Apply could poison the backup** of an added-cars database: the database is now built in a copy and only swapped in when everything worked.
+          **What's new in 1.1.1**
+          - **Fixed: traffic and AI cars didn't show in the Autoshow** with the pack on. All 17 (hatchbacks, vans, the bus and the box truck) are now for sale, and they still drive around as traffic. Press Apply again after updating.
+          - **Rocket on the controller**: click the left stick (LS) to fire the rocket, as well as the 4 key.
+          - **Faster UFO mode**: speed up to 1000 mph (1609 km/h) and climb up to 300 mph.
+          - The FH2 Mods window and the overlay still work together: set car mods and packs in the window, then change your car live with the overlay.
           - The game must run in windowed or borderless mode for the overlay to show."

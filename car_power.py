@@ -227,6 +227,9 @@ if settings.get('PackTrafficCars'):   # traffic and AI-only cars in the Autoshow
         from Data_Car c join TrafficCars t on t.CarId=c.Id
         where not exists (select 1 from Data_Car_Buckets b where b.CarId=c.Id)
           and exists (select 1 from List_UpgradeEngine e where e.Ordinal=c.Id and e.IsStock=1)""")
+    # the Autoshow lists the game's Drivable_Data_Car view, which drops every car in TrafficCars; traffic still spawns
+    # them from AI\CarLoadingSettings.xml, so taking them out of the table only makes them buyable
+    db.execute('delete from TrafficCars where CarId in (select CarId from Data_Car_Buckets)')
     packs.append('traffic cars for sale')
 if settings.get('PackFreeCars'):
     db.execute('update Data_Car set BaseCost=1')

@@ -212,7 +212,7 @@ namespace FH2Overlay
         void StuntsTab()
         {
             Card("Stunts");
-            Note($"At speed: [{K("BarrelRoll")}] barrel roll, [{K("Spin360")}] 360, [{K("Backflip")}] backflip, [{K("Rocket")}] rocket. Any time: [{K("Jump")}] jump, [{K("Stop")}] instant stop, [{K("Flip")}] flip upright.");
+            Note($"At speed: [{K("BarrelRoll")}] barrel roll, [{K("Spin360")}] 360, [{K("Backflip")}] backflip, [{K("Rocket")}] or LS rocket. Any time: [{K("Jump")}] jump, [{K("Stop")}] instant stop, [{K("Flip")}] flip upright.");
             Number("Jump height  (m)", null, "JumpMetres", 1, 20, 0.5m, 1);
             Number("Rocket adds", null, "RocketMph", 5, 130, 5, 0, true);
             Live("Wheelie mode", "Keeps the nose up at the wheelie angle.", "Wheelie", d => d.Wheelie, (d, v) => d.Wheelie = v);
@@ -224,8 +224,8 @@ namespace FH2Overlay
             Number("Gravity  (%)", null, "GravityPercent", 10, 90, 5);
             Card("UFO");
             Live("UFO mode", $"Fly: throttle and brake forward and back, steer to turn, [{K("UfoUp")}] / RB up, [{K("UfoDown")}] / LB down.", "Ufo", d => d.Ufo, (d, v) => d.Ufo = v);
-            Number("Speed", null, "UfoMph", 10, 300, 5, 0, true);
-            Number("Climb", null, "UfoClimbMph", 5, 100, 5, 0, true);
+            Number("Speed", "Up to 1000 mph (1609 km/h).", "UfoMph", 10, 1000, 10, 0, true);
+            Number("Climb", null, "UfoClimbMph", 5, 300, 5, 0, true);
             Card("Ghost");
             Live("Ghost mode", "Drive through traffic and other cars. Turn it off before races. (FH2 Mods' Ghost cars option keeps you ghosted anyway.)", "Ghost", d => d.Ghost, (d, v) => d.Ghost = v);
         }

@@ -231,7 +231,7 @@ The game must run windowed or borderless (Azimuth's display setting).
   F12               wheelie mode
   F4                jump
   1 / 2 / 3         barrel roll / 360 spin / backflip
-  4 / 5             rocket / instant stop
+  4 / 5             rocket (or LS click) / instant stop
   Backspace         flip the car upright
   6                 air control
   Page Up / Down    low gravity / UFO mode (R / F or RB / LB up, down)
