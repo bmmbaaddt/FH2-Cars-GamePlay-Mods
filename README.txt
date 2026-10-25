@@ -9,6 +9,9 @@ New in 1.1.0: an in-game overlay (press Insert while driving) with boost,
 nitrous, launch control, drift, stunts, UFO mode, teleport, cruise control,
 run timers, a drag light tree and on-screen gauges.
 
+New in 1.2: game modes in the overlay (F2 in game): speed bomb, score
+attack and pursuit. See GAME MODES below.
+
 TWO MENUS THAT WORK TOGETHER
   FH2 Mods.bat (the window)  changes the game files: traffic, crashes,
                              money, skills, camera, car mods, packs.
@@ -115,7 +118,10 @@ While driving (always on):
 In My Cars (the garage car list, from the main menu or the pause menu):
   R or right stick click   jump to a random car of your garage
 Change them in FH2_ExtraOptions.ini next to azimuth.exe, section [Keyboard]
-(a letter, a digit, F1-F12, or off). FH2 has no horn.
+(a letter, a digit, F1-F12, or off; anything else makes ExtraOptions refuse
+the whole file). Your keys are kept through Restore originals and when
+another mod replaces that file, so it does not need to be read-only.
+FH2 has no horn.
 
 On a controller (from ExtraOptions 0.2.98):
   hold D-pad left / right 1 second   left / right indicator (switches off
@@ -183,6 +189,15 @@ game files and shows what is different.
       Restore originals in that older version, delete backup_original next
       to azimuth.exe, then Apply with this version.
   Empty car list  install Python 3 with "Add python.exe to PATH".
+  "Access to the path ... is denied"  fixed in 1.2: Apply now rewrites
+      read-only or hidden files (such as FH2_ExtraOptions.ini) itself.
+  Swapping car pack databases  since 1.2 a gamedbRC.slt from another car
+      pack is taken as that pack's own, not mixed with the previous one.
+      If your garage has cars the new pack does not have, the car mods line
+      warns you: put the old pack back or sell those cars first.
+  Never delete backup_original after an Apply: the next Apply would back up
+      files that are already modded. If you did, put the genuine game files
+      back from your game download first.
 
 
 ADDED CARS (mediaoverride / mediapc)
@@ -238,6 +253,7 @@ The game must run windowed or borderless (Azimuth's display setting).
   8 / 7             save a spot / teleport to it (9 spots)
   0                 ghost mode
   U                 switch mph / km/h
+  F2                next game mode (off, speed bomb, score attack, pursuit)
 
 Every key can be changed on the Keys tab. Keys only act while the game is
 in front, never with Ctrl or Alt held (the Ctrl world keys keep working).
@@ -247,6 +263,31 @@ close the overlay. The MPH / KM/H switch changes the gauges, the speed
 settings and the run timers (0-60 to 0-200 mph and 1/8 to 1 mile, or
 0-100 to 0-400 km/h and 100 to 2000 m). Stunts and the rocket need the car
 moving. Single-player only: not in online sessions with other players.
+
+
+GAME MODES (overlay, new in 1.2)
+--------------------------------
+F2 while driving in free roam goes to the next mode, or start one on the
+overlay's Modes tab. The mode shows at the top of the status card; End
+stops it. Best results are saved.
+THE GAME MODES ARE NEW AND MAY BE BUGGY, PURSUIT MOST OF ALL. If something
+goes wrong, press End.
+
+  Speed bomb     reach the bomb speed (50 mph) to arm it, then never drop
+                 below it for more than half a second or the car is blown
+                 up. 5 mph faster every minute. Best: longest time.
+  Score attack   2 minutes: points for speed over 60 mph, drifts, air time
+                 and near misses (another car within 3 m). New skills raise
+                 the multiplier (up to x5); the chain banks after 3 s
+                 without one; a crash loses it. Best: highest score.
+  Pursuit        drivatars (traffic if there are none) are dropped behind
+                 you and chase you along the roads you drove. Busted:
+                 stopped next to one for 2.5 s. Wrecked: hit 3 times.
+                 Escape: 250 m away for 8 s, then they come back faster
+                 and more of them (up to 3). Ghosting is off during a
+                 pursuit. EXPERIMENTAL: chasers are held on your route, so
+                 off it they can float or sink a little ("Chaser height"
+                 on the Modes tab trims it).
 
 
 FILES

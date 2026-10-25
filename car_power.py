@@ -86,6 +86,12 @@ def merge_changes(base, before, after):
     assert g.execute('pragma integrity_check').fetchone()[0] == 'ok'
     g.close(); os.replace(tmp, base)
 
+def replaced(before, after):
+    """a car pack swapped in its own database (cars we wrote are gone), rather than an importer adding to ours"""
+    g = sqlite3.connect(after); g.execute('attach ? as b', (before,))
+    gone = g.execute('select 1 from b.Data_Car where Id not in (select Id from main.Data_Car) limit 1').fetchone()
+    g.close(); return bool(gone)
+
 for folder in ('mediaoverride', 'mediapc'):
     override = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(DB))), folder, 'stripped', 'gamedbRC.slt')
     if os.path.exists(override):
@@ -96,7 +102,7 @@ for folder in ('mediaoverride', 'mediapc'):
             os.makedirs(os.path.dirname(ORIG), exist_ok=True); shutil.copy2(DB, ORIG)
         elif current not in (sha(ORIG), open(WRITTEN).read() if os.path.exists(WRITTEN) else ''):
             # ponytail: a row the mod changed that our car mods also changed keeps both changes; rare, a full re-import fixes it
-            if os.path.exists(WRITTEN + '.slt'): merge_changes(ORIG, WRITTEN + '.slt', DB)
+            if os.path.exists(WRITTEN + '.slt') and not replaced(WRITTEN + '.slt', DB): merge_changes(ORIG, WRITTEN + '.slt', DB)
             else: shutil.copy2(DB, ORIG)
         break
 
@@ -245,6 +251,9 @@ if gone:
     sys.exit('your garage uses parts from a pack you switched off (' + ', '.join(f'car {c} {t[18:] or "engine"} {p}' for t, c, p in gone[:5]) +
              '): switch the pack back on, or fit the stock part in game first')
 print('packs:', ', '.join(packs) or 'none')
+# a car pack swap can drop cars the save owns; the window shows only the last line, so the warning goes there
+lost = sorted({c for (c,) in save_query('select CarId from Career_Garage')} - {c for (c,) in db.execute('select Id from Data_Car')})
+lost = f'; WARNING: your garage has {len(lost)} car(s) this car pack does not have (ids {", ".join(map(str, lost[:5]))}): put the old pack back or sell them first' if lost else ''
 # the Skill Legend perk's x6 is a fixed cap that replaces apply.ps1's MaxMultiplier, so it stays one above that
 top = settings.get('MaxSkillMultiplier', 5)
 db.execute("update Perks set Modifier=? where Name='Skill Legend'", (max(6.0, top + 1.0),))
@@ -253,4 +262,4 @@ assert db.execute('pragma integrity_check').fetchone()[0] == 'ok'
 db.close()
 os.replace(WORK, DB)
 if WRITTEN: open(WRITTEN, 'w').write(sha(DB)); shutil.copy2(DB, WRITTEN + '.slt')   # the copy lets a later mod update be merged
-print(f'applied to {len(cars)} car(s)')
+print(f'applied to {len(cars)} car(s)' + lost)

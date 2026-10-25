@@ -45,6 +45,8 @@ $winmm      = Join-Path $root 'winmm.dll'
 $eoIni      = Join-Path $root 'FH2_ExtraOptions.ini'
 $eoBackups  = Join-Path $root 'backup_original\ExtraOptions'
 $tlsTarget  = 'azimuth-tls.dll.original', 'azimuth-tls.dll' | ForEach-Object { Join-Path $root "data\bin\$_" } | Where-Object { Test-Path $_ } | Select-Object -First 1
+# a read-only or hidden file (some mods and sync tools leave ini files that way) can't be rewritten: Access to the path is denied
+class Ini { static Write($path, $text, $enc) { if (Test-Path $path) { (Get-Item $path -Force).Attributes = 'Normal' }; [IO.File]::WriteAllText($path, $text, $enc) } }
 function FileHas($path, $text) { $path -and (Test-Path $path) -and [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($path)).Contains($text) }
 function SameFile($a, $b) { (Test-Path $a) -and (Test-Path $b) -and (Get-FileHash $a).Hash -eq (Get-FileHash $b).Hash }
 # Car mods in ExtraOptions' override folders ship a full zipmanifest.xml that the game reads instead of media's,
@@ -61,12 +63,15 @@ function SyncOverrideManifests {
       $m = [regex]::Match($ours, $rx)
       if ($m.Success) { $text = [regex]::Replace($text, $rx, $m.Value) }
     }
-    if ($text -ne $before) { [IO.File]::WriteAllText($file, $text, (New-Object Text.UTF8Encoding($true))); "  $dir\zipmanifest.xml: kept in step with this tool's zips" }
+    if ($text -ne $before) { [Ini]::Write($file, $text, (New-Object Text.UTF8Encoding($true))); "  $dir\zipmanifest.xml: kept in step with this tool's zips" }
   }
 }
 # the stock ExtraOptions refuses to load with settings it doesn't know, so these sections go when it comes back
 function StripForkSettings($text) { [regex]::Replace($text, '(?ms)^\[(Keyboard|Cockpit|Traffic)\]\r?\n.*?(?=^\[|\z)', '').TrimEnd() + "`n" }
+$savedKeys = Join-Path $eoBackups 'Keyboard.ini'   # the [Keyboard] section Restore took out, so the next Apply puts the player's keys back
 if ($Restore) {
+  $kb = if (Test-Path $eoIni) { [regex]::Match([IO.File]::ReadAllText($eoIni), '(?ms)^\[Keyboard\]\r?\n.*?(?=^\[|\z)') }
+  if ($kb.Success) { New-Item -ItemType Directory -Force $eoBackups | Out-Null; [Ini]::Write($savedKeys, $kb.Value, (New-Object Text.UTF8Encoding($false))) }
   foreach ($f in $zips + $loose + $tracks + 'zipmanifest.xml') { Copy-Item -Force (Join-Path $backup $f) (Join-Path $media $f) }
   SyncOverrideManifests
   $tlsBackup = Join-Path $eoBackups 'azimuth-tls.dll'
@@ -74,7 +79,7 @@ if ($Restore) {
   if (Test-Path (Join-Path $eoBackups 'winmm.dll')) { Copy-Item -Force (Join-Path $eoBackups 'winmm.dll') $winmm; '  ExtraOptions: original winmm.dll restored' }
   elseif (SameFile $winmm $eoDll) { Remove-Item $winmm; '  ExtraOptions: FH2 Mods winmm.dll removed' }
   foreach ($ini in $eoIni, (Join-Path $root 'data\bin\FH2_ExtraOptions.ini')) {
-    if (Test-Path $ini) { [IO.File]::WriteAllText($ini, (StripForkSettings ([IO.File]::ReadAllText($ini))), (New-Object Text.UTF8Encoding($false))) }
+    if (Test-Path $ini) { [Ini]::Write($ini, (StripForkSettings ([IO.File]::ReadAllText($ini))), (New-Object Text.UTF8Encoding($false))) }
   }
   'restored original files'; return
 }
@@ -104,7 +109,7 @@ else {
 }
 
 # ExtraOptions finds the game through [launcher] game_folder, which Azimuth 0.9.9 no longer writes (it may drop it again on a settings change).
-if ($azText -match '(?m)^\[launcher\]' -and $azText -notmatch '(?m)^game_folder=') { [IO.File]::WriteAllText($azIni, ($azText -replace '(?m)^\[launcher\]\r?\n', "[launcher]`r`ngame_folder=$gameFolder`r`n"), [Text.Encoding]::Unicode); '  azimuth.ini: game_folder added back for ExtraOptions' }
+if ($azText -match '(?m)^\[launcher\]' -and $azText -notmatch '(?m)^game_folder=') { [Ini]::Write($azIni, ($azText -replace '(?m)^\[launcher\]\r?\n', "[launcher]`r`ngame_folder=$gameFolder`r`n"), [Text.Encoding]::Unicode); '  azimuth.ini: game_folder added back for ExtraOptions' }
 
 $s = Get-Content $Settings -Raw | ConvertFrom-Json
 $inv = [Globalization.CultureInfo]::InvariantCulture
@@ -224,8 +229,13 @@ if ($eoActive -and (Test-Path $eoIni)) {
   $ghost = "GhostCars=$([int][bool]$s.GhostTraffic)"
   $eo = if ($eo -match '(?m)^GhostCars=') { $eo -replace '(?m)^GhostCars=\d*', $ghost }
         else { $eo.TrimEnd() + "`n`n[Traffic]`n; drive through every other car; they stay visible`n$ghost`n" }
-  if ($eo -notmatch '(?m)^\[Keyboard\]') { $eo = $eo.TrimEnd() + "`n`n[Keyboard]`n; a letter, a digit, F1-F12, or off`nHeadlights=L`nIndicatorLeft=Q`nIndicatorRight=E`nHazards=H`n" }
-  [IO.File]::WriteAllText($eoIni, $eo, (New-Object Text.UTF8Encoding($false)))
+  if ($eo -notmatch '(?m)^\[Keyboard\]') {
+    $kb = if (Test-Path $savedKeys) { [IO.File]::ReadAllText($savedKeys) } else { "[Keyboard]`n; a letter, a digit, F1-F12, or off`nHeadlights=L`nIndicatorLeft=Q`nIndicatorRight=E`nHazards=H`n" }
+    $eo = $eo.TrimEnd() + "`n`n" + $kb
+  }
+  # kept for when another mod's own FH2_ExtraOptions.ini replaces ours
+  [Ini]::Write($savedKeys, [regex]::Match($eo, '(?ms)^\[Keyboard\]\r?\n.*?(?=^\[|\z)').Value, (New-Object Text.UTF8Encoding($false)))
+  [Ini]::Write($eoIni, $eo, (New-Object Text.UTF8Encoding($false)))
   "  FH2_ExtraOptions.ini: $ghost"
 } elseif ($s.GhostTraffic) { '  Ghost cars skipped: it needs the FH2 Mods ExtraOptions' }
 # crashes and breakables stop turning the car: hit forces push it but no longer spin, flip or tumble it,
@@ -358,6 +368,6 @@ foreach ($f in $tracks) {
 }
 # everything built without errors: write it all at once
 foreach ($zipName in $outputs.Keys) { [IO.File]::WriteAllBytes((Join-Path $media $zipName), $outputs[$zipName]) }
-[IO.File]::WriteAllText((Join-Path $media 'zipmanifest.xml'), $manifest, (New-Object Text.UTF8Encoding($true)))
+[Ini]::Write((Join-Path $media 'zipmanifest.xml'), $manifest, (New-Object Text.UTF8Encoding($true)))
 SyncOverrideManifests
 'applied'

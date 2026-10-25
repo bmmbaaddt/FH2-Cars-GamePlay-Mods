@@ -1,6 +1,7 @@
 // Reads and writes the running game (FH2 1.0.0.64 hosted by Azimuth; its image is found by the PE timestamp). Every write first checks that
 // the player car is still the same object, so a car change, a loading screen or a menu never gets a stale write.
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
@@ -222,39 +223,145 @@ namespace FH2Overlay
 
         public float[] Vec(Car car, int at) { Check(car); return V.From(Read(car.Sim + at, 12)); }
         public float[][] Rows(Car car, int at) { Check(car); var b = Read(car.Sim + at, 48); return new[] { V.From(b, 0), V.From(b, 16), V.From(b, 32) }; }
-        public void SetVelocity(Car car, float[] v)
+        public void SetVelocity(Car car, float[] v) { Check(car); WriteVelocity(car.Sim, v); }
+        public void SetSpin(Car car, float[] w) { Check(car); WriteSpin(car.Sim, w); }
+        void WriteVelocity(long sim, float[] v)
         {
-            Check(car);
             if (V.Len(v) > 500) throw new Exception("speed out of range");
-            Write(car.Sim + Velocity, V.Bytes(v)); WriteFloat(car.Sim + Speed, V.Len(v));
+            Write(sim + Velocity, V.Bytes(v)); WriteFloat(sim + Speed, V.Len(v));
         }
-        public void SetSpin(Car car, float[] w)
+        void WriteSpin(long sim, float[] w)
         {
-            Check(car);
             if (V.Len(w) > 100) throw new Exception("spin out of range");
-            var inertia = Rows(car, Inertia);   // the body integrates angular momentum, so it is set to match
+            var b = Read(sim + Inertia, 48);   // the body integrates angular momentum, so it is set to match
             var l = new float[3];
-            for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++) l[j] += w[i] * inertia[i][j];
-            Write(car.Sim + Spin, V.Bytes(w)); Write(car.Sim + Momentum, V.Bytes(l));
+            for (int i = 0; i < 3; i++) { var row = V.From(b, i * 16); for (int j = 0; j < 3; j++) l[j] += w[i] * row[j]; }
+            Write(sim + Spin, V.Bytes(w)); Write(sim + Momentum, V.Bytes(l));
         }
 
-        public void Teleport(Car car, float[] pos, byte[] basis)
+        // the other cars of the world (traffic, drivatars) with a live body: id = their rigid body, position, velocity
+        public List<(long id, float[] pos, float[] vel)> Others(Car player)
         {
-            Check(car);
+            var list = new List<(long, float[], float[])>();
+            foreach (long c in Cars())
+                try
+                {
+                    if (c == 0 || c == player.Address || Ptr(c) != CarVtable || Int(c + CarActive) != 1 || Read(c + CarHidden, 1)[0] != 0) continue;   // parked in the pool, not on the road
+                    long sim = Ptr(c + CarSim);
+                    if (sim == 0 || sim == player.Sim || Ptr(sim) != SimVtable) continue;
+                    list.Add((sim, V.From(Read(sim + Position, 12)), V.From(Read(sim + Velocity, 12))));
+                }
+                catch { }   // a car being built or removed
+            return list;
+        }
+        // body -> (kind, Data_Car id) of the other cars; kind 0 is a local player, the others tell traffic from drivatars
+        public Dictionary<long, (int kind, int model)> OtherKinds(Car player)
+        {
+            var info = new Dictionary<long, (int, int)>();
+            foreach (long c in Cars())
+                try
+                {
+                    if (c == 0 || c == player.Address || Ptr(c) != CarVtable) continue;
+                    long sim = Ptr(c + CarSim);
+                    if (sim != 0 && sim != player.Sim) info[sim] = (Int(c + CarKind), Int(c + CarModel));
+                }
+                catch { }
+            return info;
+        }
+        public const int DrivatarKind = 1, TrafficKind = 2;   // read in free roam: 18 kind-2 cars (the traffic cap), 11 kind-1 in real cars
+        // drivatars with a live body, also ones the game keeps inactive or hidden while they are far away: body -> position
+        public List<(long id, float[] pos)> Drivatars(Car player)
+        {
+            var list = new List<(long, float[])>();
+            foreach (long c in Cars())
+                try
+                {
+                    if (c == 0 || c == player.Address || Ptr(c) != CarVtable || Int(c + CarKind) != DrivatarKind) continue;
+                    long sim = Ptr(c + CarSim);
+                    if (sim != 0 && sim != player.Sim && Ptr(sim) == SimVtable) list.Add((sim, V.From(Read(sim + Position, 12))));
+                }
+                catch { }
+            return list;
+        }
+        // every car, one line each (for --probe)
+        public IEnumerable<string> Describe(Car player)
+        {
+            var here = Vec(player, Position);
+            foreach (long c in Cars())
+            {
+                string line;
+                try
+                {
+                    if (c == 0 || Ptr(c) != CarVtable) { line = "not a car"; }
+                    else
+                    {
+                        long sim = Ptr(c + CarSim); bool body = sim != 0 && Ptr(sim) == SimVtable;
+                        line = $"kind {Int(c + CarKind)} car {Int(c + CarModel),5}  active {Int(c + CarActive)} hidden {Read(c + CarHidden, 1)[0]}  body {(body ? "ok" : "none")}" +
+                               (body ? $"  {V.Len(V.Sub(V.From(Read(sim + Position, 12)), here)),6:0} m  {Float(sim + Speed) / Motion.MsPerMph,4:0} mph  collision {Int(sim + Collision)}" : "") +
+                               (c == player.Address ? "  <- you" : "");
+                    }
+                }
+                catch (Exception e) { line = "unreadable: " + e.Message; }
+                yield return line;
+            }
+        }
+        public bool OtherValid(long sim) { try { return Ptr(sim) == SimVtable; } catch { return false; } }
+        public float[][] OtherRows(long sim) { var b = Read(sim + Basis, 48); return new[] { V.From(b, 0), V.From(b, 16), V.From(b, 32) }; }
+        public float[] OtherVec(long sim, int at) => V.From(Read(sim + at, 12));
+        // drives another car: only a body that is still a car body, never the player's
+        public void PushOther(Car player, long sim, float[] v, float[] spin)
+        {
+            Check(player);
+            if (sim == player.Sim || !OtherValid(sim)) throw new Exception("the chaser is gone");
+            WriteVelocity(sim, v); WriteSpin(sim, spin);
+        }
+
+        public void Teleport(Car car, float[] pos, byte[] basis) { Check(car); TeleportBody(car.Sim, pos, basis); }
+        void TeleportBody(long sim, float[] pos, byte[] basis)
+        {
             if (pos.Length != 3 || Array.Exists(pos, x => float.IsNaN(x) || Math.Abs(x) > 50000)) throw new Exception("bad spot");
-            var here = Vec(car, Position); var turn = Rows(car, Basis);
+            var here = V.From(Read(sim + Position, 12)); var tb = Read(sim + Basis, 48); var turn = new[] { V.From(tb, 0), V.From(tb, 16), V.From(tb, 32) };
             var turned = new bool[PoseCopies.Length];   // a copy gets the new direction only where it holds the current one
             for (int i = 0; i < PoseCopies.Length; i++)
             {
                 int at = PoseCopies[i];
-                if (V.Len(V.Sub(V.From(Read(car.Sim + at, 12)), here)) > 0.05f) throw new Exception("car position layout not recognised");
-                var b = Read(car.Sim + at + 16, 48);
+                if (V.Len(V.Sub(V.From(Read(sim + at, 12)), here)) > 0.05f) throw new Exception("car position layout not recognised");
+                var b = Read(sim + at + 16, 48);
                 turned[i] = V.Len(V.Sub(V.From(b, 0), turn[0])) < 0.02f && V.Len(V.Sub(V.From(b, 16), turn[1])) < 0.02f && V.Len(V.Sub(V.From(b, 32), turn[2])) < 0.02f;
             }
             if (!turned[0]) throw new Exception("car direction layout not recognised");
-            SetVelocity(car, new float[3]); SetSpin(car, new float[3]);
+            WriteVelocity(sim, new float[3]); WriteSpin(sim, new float[3]);
             var p = new[] { pos[0], pos[1] + 0.4f, pos[2] };
-            for (int i = 0; i < PoseCopies.Length; i++) { if (turned[i]) Write(car.Sim + PoseCopies[i] + 16, basis); Write(car.Sim + PoseCopies[i], V.Bytes(p)); }
+            for (int i = 0; i < PoseCopies.Length; i++) { if (turned[i]) Write(sim + PoseCopies[i] + 16, basis); Write(sim + PoseCopies[i], V.Bytes(p)); }
+        }
+        // puts another car (a chaser) somewhere else, facing along `basis`
+        public void TeleportOther(Car player, long sim, float[] pos, byte[] basis)
+        {
+            Check(player);
+            if (sim == player.Sim || !OtherValid(sim)) throw new Exception("the chaser is gone");
+            TeleportBody(sim, pos, basis);
+        }
+
+        // sets another car's height directly (a drivatar has no physics to hold it on the road), in every pose copy that agrees
+        public void SetOtherHeight(Car player, long sim, float y)
+        {
+            Check(player);
+            if (sim == player.Sim || !OtherValid(sim) || float.IsNaN(y) || Math.Abs(y) > 50000) return;
+            var here = V.From(Read(sim + Position, 12));
+            foreach (int at in PoseCopies)
+                if (V.Len(V.Sub(V.From(Read(sim + at, 12)), here)) < 0.05f) Write(sim + at + 4, BitConverter.GetBytes(y));
+        }
+
+        // car-to-car collision of a body: 2 = collides, 4 = ghost (anything else: not a state we know, left alone)
+        public int CollisionOf(long sim) => Int(sim + Collision);
+        public bool SetCollision(Car player, long sim, bool collides)
+        {
+            Check(player);
+            if (sim != player.Sim && !OtherValid(sim)) return false;
+            int now = Int(sim + Collision);
+            if (now != 2 && now != 4) return false;
+            if (now != (collides ? 2 : 4)) Write(sim + Collision, BitConverter.GetBytes(collides ? 2 : 4));
+            return true;
         }
         public byte[] BasisBytes(Car car) { Check(car); return Read(car.Sim + Basis, 48); }
 

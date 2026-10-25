@@ -33,7 +33,7 @@ namespace FH2Overlay
         {
             if (args.Contains("--test"))
             {
-                try { Motion.Test(); Runs.Test(); Console.WriteLine("PASS: motion, runs"); return 0; }
+                try { Motion.Test(); Runs.Test(); Modes.Test(); Console.WriteLine("PASS: motion, runs, modes"); return 0; }
                 catch (Exception e) { Console.WriteLine(e.Message); return 1; }
             }
             if (args.Contains("--probe"))   // read-only: what the overlay would see right now
@@ -50,6 +50,11 @@ namespace FH2Overlay
                         Console.WriteLine($"position {string.Join(", ", g.Vec(car, Game.Position).Select(x => x.ToString("0.0")))}, up {string.Join(", ", g.Rows(car, Game.Basis)[1].Select(x => x.ToString("0.00")))}");
                         try { var t = g.TyresOf(car); Console.WriteLine($"tyre grip front {g.Grip(car, t[0])}, rear {g.Grip(car, t[1])}"); } catch (Exception e) { Console.WriteLine("tyres: " + e.Message); }
                         Console.WriteLine($"exhaust mode {g.BackfireModeOf(car)}, brakes {string.Join(", ", g.Brakes(car))}, throttle {g.Throttle():0.00}");
+                        var here = g.Vec(car, Game.Position);
+                        var others = g.Others(car).Select(o => (d: V.Len(V.Sub(o.pos, here)), v: V.Len(o.vel))).OrderBy(o => o.d).ToList();
+                        Console.WriteLine($"other cars (game modes): {others.Count}; nearest " + string.Join(", ", others.Take(5).Select(o => $"{o.d:0} m at {o.v / Motion.MsPerMph:0} mph")));
+                        Console.WriteLine("other cars by kind: " + string.Join(", ", g.OtherKinds(car).Values.GroupBy(k => k.kind).Select(k => $"kind {k.Key}: {k.Count()} (car ids {string.Join(" ", k.Select(x => x.model).Distinct().Take(8))})")));
+                        if (args.Contains("--cars")) foreach (var line in g.Describe(car)) Console.WriteLine("  " + line);
                     }
                     return 0;
                 }
@@ -169,7 +174,7 @@ namespace FH2Overlay
                     {
                         if (r == "Exit") { requests.Enqueue(r); break; }
                         if (r == "DeleteSpot") { DeleteSpot(); continue; }
-                        if ((r == "SaveSpot" || r == "Teleport") && !driving.Live) { pending = r; continue; }   // waits for the game to have focus again
+                        if ((r == "SaveSpot" || r == "Teleport" || r.StartsWith("Mode")) && !driving.Live) { pending = r; continue; }   // waits for the game to have focus again
                         input.Pressed.Add(r);
                     }
                     if (pending != null && driving.Live) { input.Pressed.Add(pending); pending = null; }

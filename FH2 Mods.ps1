@@ -143,7 +143,9 @@ function RunApply($extraArgs) {
   if (Get-Process azimuth -ErrorAction SilentlyContinue) { $status.ForeColor = 'Firebrick'; $status.Text = 'Close the game first.'; return $false }
   $status.ForeColor = 'Black'; $status.Text = 'Working...'; $form.Refresh()
   $out = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $dir 'apply.ps1') @extraArgs 2>&1
-  if ($LASTEXITCODE -ne 0) { $status.ForeColor = 'Firebrick'; $status.Text = "Failed: $($out | Select-Object -Last 1)"; return $false }
+  # a thrown error comes back as several lines ending in a blank one: show its first line, the message
+  $err = @($out | Where-Object { $_ -is [Management.Automation.ErrorRecord] -and "$_".Trim() }) + @($out | Where-Object { "$_".Trim() }) | Select-Object -First 1
+  if ($LASTEXITCODE -ne 0) { $status.ForeColor = 'Firebrick'; $status.Text = "Failed: $err"; return $false }
   $carArgs = @($extraArgs | ForEach-Object { if ($_ -eq '-Restore') { '--restore' } else { $_ } })
   $carOut = & python -I (Join-Path $dir 'car_power.py') @carArgs 2>&1
   if ($LASTEXITCODE -ne 0) { $status.ForeColor = 'Firebrick'; $status.Text = "Car mods failed: $($carOut | Select-Object -Last 1)"; return $false }

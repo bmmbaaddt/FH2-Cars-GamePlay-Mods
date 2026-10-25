@@ -47,6 +47,12 @@ namespace FH2Overlay
         public int SpeedoX = -1, SpeedoY = -1, CardX = -1, CardY = -1;   // -1 = default corner
         public string Accent = "#22D3EE";
         public int MenuOpacity = 94;
+        // Game modes
+        public float BombMph = 50;              // speed bomb: arms at this speed, blows up below it (5 mph more every minute)
+        public float ScoreSeconds = 120;        // score attack length
+        public float ChaserMph = 150;           // pursuit: the chaser's top speed
+        public float ChaserHeight = 0;          // metres added to a drivatar chaser's height (cars sit at different heights than yours)
+        public float BombBest = 0, ScoreBest = 0, PursuitBest = 0;
         // saved teleport spots: x,y,z then 12 orientation floats, ';' between spots
         public string Spots = "";
         public string BestTimes = "";
@@ -114,6 +120,7 @@ namespace FH2Overlay
             ("Cruise", Keys.F10, "cruise control on / off"),
             ("Flip", Keys.Back, "flip the car upright"),
             ("Units", Keys.U, "switch mph / km/h"),
+            ("GameMode", Keys.F2, "game mode: off, bomb, score, pursuit"),
         };
         public static readonly Dictionary<string, Keys> Defaults = All.ToDictionary(a => a.name, a => a.key);
     }

@@ -62,7 +62,7 @@ namespace FH2Overlay
             tabs.BackColor = Bar;
             Controls.Add(page); Controls.Add(tabs); Controls.Add(foot); Controls.Add(head);
 
-            Tab("Driving", DrivingTab); Tab("Stunts & air", StuntsTab); Tab("Timers", TimersTab); Tab("Teleport", TeleportTab);
+            Tab("Driving", DrivingTab); Tab("Stunts & air", StuntsTab); Tab("Modes", ModesTab); Tab("Timers", TimersTab); Tab("Teleport", TeleportTab);
             Tab("Gauges", GaugesTab); Tab("Keys", KeysTab); Tab("About", AboutTab);
             Open("Driving");
 
@@ -89,6 +89,7 @@ namespace FH2Overlay
             if (d == null) return false;
             if (name == "Driving") return d.Boost || d.NitrousOn || d.BurnoutActive || d.LaunchActive || d.Drift || d.Grip || d.Limiter || d.Cruise;
             if (name == "Stunts & air") return d.Wheelie || d.Air || d.LowGravity || d.Ufo || d.Ghost;
+            if (name == "Modes") return d.Modes.Mode != Modes.Kind.Off;
             return false;
         }
 
@@ -228,6 +229,30 @@ namespace FH2Overlay
             Number("Climb", null, "UfoClimbMph", 5, 300, 5, 0, true);
             Card("Ghost");
             Live("Ghost mode", "Drive through traffic and other cars. Turn it off before races. (FH2 Mods' Ghost cars option keeps you ghosted anyway.)", "Ghost", d => d.Ghost, (d, v) => d.Ghost = v);
+        }
+        void ModesTab()
+        {
+            Card("Game modes", true);
+            Note($"[{K("GameMode")}] in game goes to the next mode: off, speed bomb, score attack, pursuit. Or start one here; it begins when you are back in the game. All off stops it.");
+            var now = new Label { AutoSize = true, ForeColor = Ink, Font = new Font("Bahnschrift SemiBold", 10) };
+            refreshers.Add(() => { var d = driving(); now.Text = d == null ? "game not connected" : d.Modes.Mode == Modes.Kind.Off ? (d.Modes.Result == "" ? "no mode running" : "last: " + d.Modes.Result) : "running: " + Modes.Names[(int)d.Modes.Mode]; });
+            refreshers.Last()(); Put(now, 24);
+            Buttons(Btn("Speed bomb", () => request("ModeBomb")), Btn("Score attack", () => request("ModeScore")), Btn("Pursuit", () => request("ModePursuit")), Btn("Stop", () => request("ModeStop")));
+            Card("Speed bomb");
+            Note("Reach the speed to arm it, then never drop below it for more than half a second. It gets 5 mph faster every minute.");
+            Number("Bomb speed", null, "BombMph", 20, 250, 5, 0, true);
+            Card("Score attack");
+            Note("Points for speed over 60 mph, drifts, air and near misses. New skills raise the multiplier (up to x5); the chain banks after 3 s without one. A crash loses the chain.");
+            Number("Length  (seconds)", null, "ScoreSeconds", 30, 900, 30);
+            Card("Pursuit");
+            Note("Cars of the world (drivatars first) are dropped on the road right behind you and chase you along the roads you drove. Stop next to one for 2.5 s and you are busted; 3 hits and you are wrecked. Stay 250 m away for 8 s to escape: then they come faster, and more of them (up to 3). Ghosting is off during a pursuit. Free roam with traffic on. Experimental.");
+            Number("Chaser top speed", null, "ChaserMph", 50, 400, 10, 0, true);
+            Number("Chaser height  (m)", "Drivatar chasers are held on the road you drove. Raise this if they sink into it, lower it if they float. Changes at once.", "ChaserHeight", -1, 1, 0.05m, 2);
+            Card("Best");
+            var best = new Label { AutoSize = true, ForeColor = Ink, Font = new Font("Consolas", 9.5f) };
+            refreshers.Add(() => best.Text = $"speed bomb    {s.BombBest:0.0} s\nscore attack  {s.ScoreBest:#,0}\npursuit       {s.PursuitBest:0.0} s");
+            refreshers.Last()(); Put(best, 56);
+            Buttons(Btn("Reset", () => { s.BombBest = s.ScoreBest = s.PursuitBest = 0; s.Save(); }));
         }
         void TimersTab()
         {

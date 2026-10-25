@@ -20,7 +20,8 @@ namespace FH2Overlay
     {
         readonly Game game;
         readonly Settings s;
-        public Driving(Game game, Settings s) { this.game = game; this.s = s; }
+        public Driving(Game game, Settings s) { this.game = game; this.s = s; Modes = new Modes(s); }
+        public readonly Modes Modes;
 
         // switches the menu and the keys share
         public volatile bool Boost, Drift, Grip, Limiter, Wheelie, Air, LowGravity, Ufo, Ghost, Cruise;
@@ -243,6 +244,7 @@ namespace FH2Overlay
 
             if (input.Has("Teleport")) Teleport();
             Readouts(rows, v, dt, now);
+            GameModes(input, rows, airborne, now, dt, notes);
             Status = string.Join("  ·  ", notes);
         }
 
@@ -357,6 +359,148 @@ namespace FH2Overlay
             TripMetres += flat * dt; TopMs = Math.Max(TopMs, flat);
         }
 
+        // ---- game modes: the rules are in Modes; here the game side
+        List<(long id, float[] pos, float[] vel)> others = new List<(long, float[], float[])>();
+        long othersAt, speedAt, hitAt, spawnAfter; float speedWas = -1; float[] velWas; int escapesWas;
+        readonly Modes.Trail trail = new Modes.Trail();
+        sealed class Chaser { public long Id; public int CollisionWas; public float Stuck; public bool Drivatar; }
+        readonly List<Chaser> chasers = new List<Chaser>();
+        int playerCollisionWas = -1;   // the player's collision flag before the pursuit (4 when the Ghost cars option is on)
+
+        void GameModes(Input input, float[][] rows, bool airborne, long now, float dt, List<string> notes)
+        {
+            if (input.Has("GameMode")) Modes.Next();
+            foreach (var (key, kind) in new[] { ("ModeBomb", Modes.Kind.Bomb), ("ModeScore", Modes.Kind.Score), ("ModePursuit", Modes.Kind.Pursuit) })
+                if (input.Has(key)) Modes.Start(kind);
+            if (input.Has("ModeStop")) Modes.Stop();
+            if (Modes.Mode != Modes.Kind.Pursuit) EndChase();
+            if (Modes.Mode == Modes.Kind.Off) { speedWas = -1; velWas = null; escapesWas = 0; return; }
+
+            // a crash: 6 m/s (13 mph) lost within a tenth of a second, far more than any brake
+            var pos = game.Vec(car, Game.Position); var vel = game.Vec(car, Game.Velocity);
+            bool crashed = false, jolted = false;
+            if (now - speedAt >= 100)
+            {
+                crashed = speedWas >= 0 && speedWas - SpeedMs > 6;
+                jolted = velWas != null && V.Len(V.Sub(vel, velWas)) > 4;   // any hard knock, a push from behind too
+                speedWas = SpeedMs; velWas = vel; speedAt = now;
+            }
+            int misses = 0;
+            if (Modes.Mode != Modes.Kind.Bomb && now - othersAt >= 50)
+            {
+                othersAt = now; others = game.Others(car);
+                if (Modes.Mode == Modes.Kind.Score) misses = Modes.CountNearMisses(others, pos, vel, crashed);
+            }
+            float nearest = float.NaN; bool rammed = false;
+            if (Modes.Mode == Modes.Kind.Pursuit)
+            {
+                trail.Add(pos);
+                nearest = Chase(pos, vel, dt, now, notes);
+                // a hit: knocked hard with a chaser within 7 m, once per 1.5 s
+                if (jolted && nearest < 7 && now - hitAt > 1500) { rammed = true; hitAt = now; }
+            }
+            Modes.Step(SpeedMs, DriftAngle, airborne, crashed, misses, nearest, dt, rammed);
+            if (Modes.Escapes != escapesWas) { escapesWas = Modes.Escapes; ReleaseChasers(); spawnAfter = now + 5000; }   // escaped: fresh chasers after a 5 s break
+            if (Modes.Explode)   // the bomb: thrown up and rolled
+            {
+                Modes.Explode = false;
+                Motion.DoStunt(rows, Motion.Jump(game.Vec(car, Game.Velocity), 6), Motion.Stunt.BarrelRoll, out var bv, out var bs);
+                game.SetVelocity(car, bv); game.SetSpin(car, bs);
+            }
+        }
+
+        // the chasers: nearby cars taken over, up to Modes.Chasers; returns the nearest one's distance
+        float Chase(float[] pos, float[] vel, float dt, long now, List<string> notes)
+        {
+            // a pursuit needs contact: ghosting is off for you and the chasers (also the FH2 Mods Ghost cars option's)
+            if (Ghost) { Ghost = false; notes.Add("ghost is off during a pursuit"); }
+            if (playerCollisionWas < 0) playerCollisionWas = game.CollisionOf(car.Sim);
+            game.SetCollision(car, car.Sim, true);
+
+            foreach (var c in chasers.Where(c => !game.OtherValid(c.Id)).ToList()) chasers.Remove(c);   // despawned (drivatars may be off the road list, so only the body counts)
+            if (now >= spawnAfter && chasers.Count < Modes.Chasers)
+            {
+                // drivatars first (also ones the game parked far away), nearest first; traffic only when there are none
+                var drivatars = game.Drivatars(car);
+                var pool = drivatars.OrderBy(o => V.Len(V.Sub(o.pos, pos))).Select(o => o.id)
+                               .Concat(others.OrderBy(o => V.Len(V.Sub(o.pos, pos))).Select(o => o.id));
+                foreach (var id in pool.Where(id => chasers.All(c => c.Id != id)).Distinct().ToList())
+                {
+                    if (chasers.Count >= Modes.Chasers) break;
+                    var c = new Chaser { Id = id, CollisionWas = game.CollisionOf(id), Drivatar = drivatars.Any(d => d.id == id) };
+                    if (!PlaceBehind(c, pos, vel, 40 + 30 * chasers.Count)) break;   // nowhere to put it yet
+                    chasers.Add(c);
+                }
+            }
+            if (chasers.Count == 0) return float.NaN;
+
+            float yours = (float)Math.Sqrt(vel[0] * vel[0] + vel[2] * vel[2]);
+            float top = s.ChaserMph * Motion.MsPerMph * Modes.ChaserBoost, nearest = float.MaxValue;
+            foreach (var c in chasers.ToList())
+                try
+                {
+                    var cp = game.OtherVec(c.Id, Game.Position); var cv = game.OtherVec(c.Id, Game.Velocity);
+                    float d = V.Len(V.Sub(pos, cp)), cs = (float)Math.Sqrt(cv[0] * cv[0] + cv[2] * cv[2]);
+                    // stuck (against a wall, in a ditch) for 2.5 s: put back on your trail, about 120 m behind you;
+                    // one stuck 250 m or more away is left there: you shook it off, and the escape counts
+                    c.Stuck = cs < 2 && d > 20 && d < 250 ? c.Stuck + dt : 0;
+                    if (c.Stuck > 2.5f && PlaceBehind(c, pos, vel, 60)) { c.Stuck = 0; continue; }
+                    // close: ram speed; far: catch up fast (rubber band), never above its top speed
+                    float speed = Math.Min(top, d < 45 ? yours + 6 : yours * 1.3f + 15);
+                    var (nv, spin) = Modes.Steer(cp, cv, game.OtherRows(c.Id), Modes.Aim(trail, cp, pos, vel), speed, 12, dt, trail.UpAt(cp));
+                    if (c.Drivatar)   // no physics: held on the road your trail went over, tilted with it, no vertical speed of its own
+                    {
+                        float y = trail.HeightAt(cp);
+                        game.SetOtherHeight(car, c.Id, (float.IsNaN(y) ? pos[1] : y) + s.ChaserHeight);
+                        nv[1] = 0;
+                    }
+                    game.PushOther(car, c.Id, nv, spin);
+                    game.SetCollision(car, c.Id, true);
+                    nearest = Math.Min(nearest, d);
+                }
+                catch { Release(c); }
+            if (chasers.Count > 1) notes.Add($"{chasers.Count} chasers");
+            return nearest == float.MaxValue ? float.NaN : nearest;
+        }
+
+        // puts a chaser on your trail `metres` behind you (straight behind you before there is a trail), already near your speed
+        bool PlaceBehind(Chaser c, float[] pos, float[] vel, float metres)
+        {
+            float[] at, dir;
+            var back = trail.Behind(metres);
+            if (back != null) { at = back.Value.pos; dir = back.Value.dir; }
+            else
+            {
+                var r = game.Rows(car, Game.Basis); dir = V.Unit(new[] { r[2][0], 0, r[2][2] });
+                if (V.Len(dir) < 0.5f) return false;
+                at = V.Sub(pos, V.Mul(dir, metres));
+            }
+            if (V.Len(V.Sub(at, pos)) < 20) return false;   // the trail doubles back: too close to drop a car
+            var up = new float[] { 0, 1, 0 }; var right = V.Cross(up, dir);
+            var b = new byte[48];
+            foreach (var (row, o) in new[] { (right, 0), (up, 16), (dir, 32) })
+                for (int i = 0; i < 3; i++) Buffer.BlockCopy(BitConverter.GetBytes(row[i]), 0, b, o + i * 4, 4);
+            game.TeleportOther(car, c.Id, at, b);
+            game.PushOther(car, c.Id, V.Mul(dir, 0.9f * (float)Math.Sqrt(vel[0] * vel[0] + vel[2] * vel[2])), new float[3]);
+            return true;
+        }
+
+        void Release(Chaser c)
+        {
+            chasers.Remove(c);
+            try { if (c.CollisionWas == 4 && game.OtherValid(c.Id) && game.CollisionOf(c.Id) == 2) game.SetCollision(car, c.Id, false); } catch { }
+        }
+        void ReleaseChasers() { foreach (var c in chasers.ToList()) Release(c); }
+
+        // the pursuit is over: chasers go back to the game, your collision flag back to what it was
+        void EndChase()
+        {
+            ReleaseChasers(); trail.Points.Clear();
+            if (playerCollisionWas < 0) return;
+            try { if (playerCollisionWas == 4 && car != null && game.Valid(car) && game.CollisionOf(car.Sim) == 2) game.SetCollision(car, car.Sim, false); } catch { }
+            playerCollisionWas = -1;
+        }
+
         // back on the wheels, facing the same way, a little above where it was
         void Flip()
         {
@@ -388,6 +532,7 @@ namespace FH2Overlay
         // the car is gone or changed: also its ghost flag, and the new car gets a fresh grip check
         void LetGo()
         {
+            EndChase(); Modes.Stop();
             Release();
             try { if (ghostSet && car != null && game.Valid(car)) game.SetGhost(car, false); } catch { }
             ghostSet = false; tyresRefused = false;
@@ -395,6 +540,7 @@ namespace FH2Overlay
 
         public void AllOff()
         {
+            Modes.Stop(); EndChase();
             Boost = Drift = Grip = Limiter = Wheelie = Air = LowGravity = Ufo = Ghost = Cruise = false;
             CancelMoves();
             try { if (ghostSet && car != null && game.Valid(car)) game.SetGhost(car, false); } catch { }

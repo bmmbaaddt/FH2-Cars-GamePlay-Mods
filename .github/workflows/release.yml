@@ -23,9 +23,14 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" "FH2-Cars-GamePlay-Mods-${GITHUB_REF_NAME}.zip" --title "FH2 Cars & Gameplay Mods ${GITHUB_REF_NAME}" --notes "Extract the zip and put the **FH2 Mods** folder next to azimuth.exe. Requires Python 3 on PATH and **Azimuth 0.9.10**. See the README for setup and keyboard shortcuts.
 
-          **What's new in 1.1.1**
-          - **Fixed: traffic and AI cars didn't show in the Autoshow** with the pack on. All 17 (hatchbacks, vans, the bus and the box truck) are now for sale, and they still drive around as traffic. Press Apply again after updating.
-          - **Rocket on the controller**: click the left stick (LS) to fire the rocket, as well as the 4 key.
-          - **Faster UFO mode**: speed up to 1000 mph (1609 km/h) and climb up to 300 mph.
-          - The FH2 Mods window and the overlay still work together: set car mods and packs in the window, then change your car live with the overlay.
-          - The game must run in windowed or borderless mode for the overlay to show."
+          **What's new in 1.2**
+          - **Game modes in the overlay**: press F2 while driving (or use the new Modes tab) to switch between off, speed bomb, score attack and pursuit. Best results are saved.
+            - **Speed bomb**: reach 50 mph to arm it, then never drop below it, or the car blows up. It gets 5 mph faster every minute.
+            - **Score attack**: 2 minutes of points for speed, drifts, air time and near misses. New skills raise the multiplier up to x5; a crash loses the chain.
+            - **Pursuit**: drivatars are dropped behind you and chase you along the roads you drove. Stop next to one for 2.5 s and you are busted; 3 hits and you are wrecked; stay 250 m away for 8 s to escape, then they come back faster and more of them. Ghosting is off during a pursuit.
+          - **The game modes are new and may be buggy, pursuit most of all** (chasers can float or sink a little off your route; Chaser height on the Modes tab trims it). Press End to stop a mode.
+          - **Fixed: swapping a car pack's gamedbRC.slt** for another pack's and back mixed the two databases. Each pack's database is now taken as its own, and the car mods result warns when your garage has cars the pack does not have.
+          - **Fixed: Apply failed with Access to the path is denied** when FH2_ExtraOptions.ini (or another file it rewrites) was read-only or hidden.
+          - **Fixed: indicator and other ExtraOptions keys went back to Q / E / L / H** after Restore originals, or when another mod replaced FH2_ExtraOptions.ini. Your keys are now kept.
+          - **Fixed: the window showed only Failed:** with no reason; it now shows the error.
+          - Never delete backup_original after an Apply: the next Apply would back up already-modded files. Press Apply again after updating."

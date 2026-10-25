@@ -150,6 +150,13 @@ namespace FH2Overlay
         List<(string text, Color color, float size)> Lines(Driving d)
         {
             var lines = new List<(string text, Color color, float size)>();
+            if (d != null && d.Modes.Mode != Modes.Kind.Off)
+            {
+                bool alarm = d.Modes.BelowFor > 0 || d.Modes.Bust > 0.05f;
+                lines.Add((d.Modes.Banner, alarm && Environment.TickCount % 400 < 200 ? Color.FromArgb(255, 255, 80, 60) : Accent, 16));
+                lines.Add((d.Modes.Detail, alarm ? Amber : Ink, 11));
+            }
+            if (d != null && d.Modes.Result != "") lines.Add((d.Modes.Result, d.Modes.Mode == Modes.Kind.Off ? Accent : Dim, 11));
             if (s.ShowStatus && d != null)
             {
                 if (!string.IsNullOrEmpty(d.Status) && d.Status != "paused") lines.Add((d.Status.ToUpperInvariant(), Accent, 11));

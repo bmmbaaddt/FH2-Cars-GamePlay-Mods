@@ -2,7 +2,7 @@
 
 A settings window for **Forza Horizon 2 (Xbox One)** running on **Azimuth**. Change traffic, crashes, money, skills, the cockpit camera and per-car performance from one window, and get keyboard keys for lights, indicators, time and weather. No file editing: just change values and press Apply.
 
-Since 1.1.0 there is also an **in-game overlay** (press `Insert` while driving): boost, nitrous, launch control, drift, stunts, UFO mode, teleport, cruise control, run timers, a drag light tree and on-screen gauges.
+Since 1.1.0 there is also an **in-game overlay** (press `Insert` while driving): boost, nitrous, launch control, drift, stunts, UFO mode, teleport, cruise control, run timers, a drag light tree and on-screen gauges. Since 1.2 it has **game modes** too: speed bomb, score attack and pursuit (see [Game modes](#game-modes)).
 
 ## Two menus that work together
 
@@ -32,6 +32,7 @@ Use both at the same time: set your car mods and packs in the window, press **Ap
 | Car mods | Pick any car (the traffic bus and box truck too) and set power, air drag, downforce, tire grip, brakes, turbo boost, gearing and rev limit (x1 = stock, up to x100; rev limit up to x2, the game crashes above that), and the number of forward gears (up to 8) |
 | Packs | For every car at once: **Race+ engine parts** (an extra level of every engine part with the extra torque you choose), **engine swaps** (every engine fits every car), **traffic and AI cars for sale** in the Autoshow, **free cars** (1 CR each). A pack your garage uses can only be switched off after fitting the stock part |
 | Overlay | In game: boost, nitrous, pops and bangs, anti-lag, burnout, standing / rolling / wheelie launch, drift, more grip, super brakes, speed limiter, cruise control, barrel roll, 360, backflip, rocket, jump, instant stop, flip upright, air control, low gravity, UFO mode, ghost mode, 9 teleport spots, run timers with best times, drag light tree with reaction times, on-screen speed and rev panel, nitrous strip, compass, g-force, drift angle and score, trip and top speed. **mph or km/h** with one switch |
+| Game modes | In game, switchable with `F2`: **speed bomb**, **score attack**, **pursuit** (drivatars chase you), with best results kept |
 
 - **Random car from my garage** picks one of the cars you own (read from your save) and shows it, so you know what to drive next.
 - **Restore originals** puts every game file back in one click, including the original ExtraOptions.
@@ -51,7 +52,7 @@ Use both at the same time: set your car mods and packs in the window, press **Ap
 
 **In My Cars** (the garage car list, from the main menu or the pause menu): click the **right stick** or press **`R`** to jump to a random car of your garage, then press A to drive it.
 
-You can change these keys in `FH2_ExtraOptions.ini` next to `azimuth.exe`, section `[Keyboard]`: use a letter, a digit, F1–F12, or `off`. FH2 has no horn, so there is no horn key.
+You can change these keys in `FH2_ExtraOptions.ini` next to `azimuth.exe`, section `[Keyboard]`: use a letter, a digit, F1–F12, or `off`. Anything else (arrow keys, punctuation) makes ExtraOptions refuse the whole file. Your keys are kept through Restore originals and when another mod replaces that file (since 1.2), so it does not need to be read-only. FH2 has no horn, so there is no horn key.
 
 **On a controller** (from ExtraOptions 0.2.98):
 
@@ -106,6 +107,7 @@ Start it from the window (**Overlay** button, or tick *Start the overlay with Ap
 | `8` / `7` | Save a spot / teleport to it |
 | `0` | Ghost mode |
 | `U` | Switch mph / km/h |
+| `F2` | Next game mode: off, speed bomb, score attack, pursuit |
 
 Every key can be changed on the overlay's **Keys** tab. They only act while the game window is in front, and never with Ctrl or Alt held, so the Ctrl world keys above keep working.
 
@@ -114,6 +116,24 @@ Every key can be changed on the overlay's **Keys** tab. They only act while the 
 - Stunts and the rocket need the car moving: a parked car is held by the game's brakes.
 - The game must run in **windowed or borderless** mode (Azimuth's display setting) for the menu and gauges to show over it.
 - Single-player only: do not use it in online sessions with other players.
+
+### Game modes
+
+Press `F2` while driving in free roam to go to the next mode (off, speed bomb, score attack, pursuit), or start one from the overlay's **Modes** tab. The mode, its score and its warnings show at the top of the status card. `End` (everything off) stops it. Best results are saved.
+
+> **The game modes are new and may be buggy, pursuit most of all.** If something goes wrong, press `End` or `F2` until the mode is off.
+
+| Mode | How it works |
+|---|---|
+| **Speed bomb** | Reach the bomb speed (50 mph by default) to arm it, then never drop below it for more than half a second, or the car is blown into the air. It gets 5 mph faster every minute. Best: the longest time survived |
+| **Score attack** | A timed run (2 minutes by default). Points for speed over 60 mph, drifts, air time and **near misses** (passing another car within 3 m). Each new skill raises the multiplier up to x5, and the chain banks after 3 s without one. **A crash loses the chain.** Best: the highest score |
+| **Pursuit** | Drivatars (traffic if there are none) are dropped on the road behind you and chase you along the roads you drove, a little faster than you, ramming when close. **Busted**: stopped next to one for 2.5 s. **Wrecked**: hit 3 times. **Escape**: stay 250 m away for 8 s; then they come back faster, and more of them (up to 3). Ghosting is switched off during a pursuit, also the window's Ghost cars option. Best: the longest time |
+
+Pursuit notes (experimental):
+
+- Drivatars have no physics while the game drives them, so the overlay holds a chaser on the road you drove. Off your route (cutting a corner through a field) it can float or sink a little. **Chaser height** on the Modes tab trims it: raise it if chasers sink, lower it if they float.
+- A chaser stuck against something is put back on your route behind you.
+- Hits only count when the chasers actually collide with you; if they pass through, you can still be busted by stopping.
 
 ## Requirements
 
@@ -168,6 +188,8 @@ Copy **Diagnose.bat** into the FH2 Mods folder if it isn't there, double-click i
 - **`game not found`**: put the FH2 Mods folder next to azimuth.exe, add Forza Horizon 2 (the `Anthem_1.0.0.64` folder) in Azimuth and start it once. FH2 Presents Fast & Furious (`Spire`) is not supported.
 - **`backup_original ... was made from another game`**: an older version (up to v1.0.6) changed FH2 Presents Fast & Furious instead of FH2. Press Restore originals in that older version, delete `backup_original` next to azimuth.exe, then Apply with this version.
 - **Empty car list**: install Python 3 and tick "Add python.exe to PATH".
+- **`Access to the path ... is denied`**: fixed in 1.2, Apply now rewrites read-only or hidden files (such as `FH2_ExtraOptions.ini`) itself. Since 1.2 the window also shows the real error after "Failed:" instead of an empty line.
+- **Never delete `backup_original` after an Apply**: the next Apply would back up files that are already modded, and Restore could no longer undo them. If you did, put the genuine game files back from your game download first, then Apply.
 
 ## Added cars (mediaoverride / mediapc)
 
@@ -175,6 +197,7 @@ Car mods that add cars through ExtraOptions' `Mount\mediaoverride` or `Mount\med
 
 - **FM5 Car Importer:** cars it adds after an Apply are kept, and car mods are not applied twice. Press Restore originals before using its `Uninstall.ps1`, then Apply again.
 - **Moved database:** car mods still work when a car mod moved the game's `gamedbRC.slt` into `mediaoverride` instead of copying it.
+- **Swapping car packs:** since 1.2, a `gamedbRC.slt` from another car pack is taken as that pack's own instead of being mixed with the previous one, so you can switch packs back and forth. If your garage has cars the new pack does not have, the car mods result warns you: put the old pack back or sell those cars first.
 - **One database:** the game reads only one car database (`mediaoverride` before `mediapc`). Two mods that each ship a full database hide each other's cars, so keep added cars in one folder.
 - **Cockpit FOV mods** that change `Camera.zip` work too: leave Cockpit FOV at 48 to keep the mod's value, or set your own.
 
