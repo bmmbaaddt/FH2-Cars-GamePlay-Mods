@@ -21,7 +21,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" "FH2-Cars-GamePlay-Mods-${GITHUB_REF_NAME}.zip" --title "FH2 Cars & Gameplay Mods ${GITHUB_REF_NAME}" --notes "Extract the zip and put the **FH2 Mods** folder next to azimuth.exe. Requires Python 3 on PATH and **Azimuth 0.9.10**. See the README for setup and keyboard shortcuts.
+          gh release create "$GITHUB_REF_NAME" "FH2-Cars-GamePlay-Mods-${GITHUB_REF_NAME}.zip" --title "FH2 Cars & Gameplay Mods ${GITHUB_REF_NAME}" --notes "Extract the zip and put the **FH2 Mods** folder next to azimuth.exe. Requires Python 3 on PATH and **Azimuth 1.0.2**. See the README for setup and keyboard shortcuts.
+
+          **What's new in 1.3**
+          - **Azimuth 1.0.2 and ExtraOptions 0.3.2.** Update Azimuth from itch.io first (your saves carry over), then press Apply. On an older Azimuth everything works except ghost cars, ExtraOptions' keys, world keys and sky road.
+          - The included ExtraOptions is now 0.3.2 with this tool's additions (ghost cars, Ctrl world keys, random car, sky road). New from 0.3: the mods folder loader, Jump to Manufacturer, all online races offline, custom showcases, F1 to hide the HUD, photo mode from the garage, more audio and HUD options.
+          - **Keys are now in the [Bindings] section of FH2_ExtraOptions.ini.** Your old L / Q / E / H keys are moved over. Indicators need a short hold (0.5 s). J is Autodrive, K the roof, F1 hides the HUD. ExtraOptions' default F2 / F3 / F4 keys are moved off the overlay's keys.
+          - Apply now rebuilds FH2_ExtraOptions.ini from the new template and keeps your values, so an old ini no longer makes ExtraOptions refuse to start.
 
           **What's new in 1.2**
           - **Game modes in the overlay**: press F2 while driving (or use the new Modes tab) to switch between off, speed bomb, score attack and pursuit. Best results are saved.

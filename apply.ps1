@@ -36,15 +36,12 @@ $rest = { param($f) @([IO.File]::ReadAllLines($f) | Where-Object { $_ -match '<Z
 if (@(Compare-Object (& $rest (Join-Path $backup 'zipmanifest.xml')) (& $rest $manifestFile)).Count -gt 50) {
   throw "backup_original next to azimuth.exe was made from another game, not this FH2. If an older FH2 Mods changed FH2 Presents Fast & Furious, press Restore originals in that older version first. Then delete the backup_original folder and Apply again"
 }
-# ExtraOptions 0.2.98 with this tool's additions (ghost cars, keyboard keys, world keys, sky road) is a winmm.dll
-# next to azimuth.exe with its ini beside it. Azimuth's TLS helper in data\bin goes back to stock, since an
-# ExtraOptions there (older ones, or ours up to v1.0.4) would patch the game twice. The helper is
-# azimuth-tls.dll.original when a mod loader sits in front of it.
+# ExtraOptions 0.3.2 with this tool's additions (ghost cars, world keys, random car, sky road) is a winmm.dll
+# next to azimuth.exe with its ini beside it. It runs on Azimuth 1.0.1 and 1.0.2 only.
 $eoDll      = Join-Path $PSScriptRoot 'ExtraOptions\winmm.dll'
 $winmm      = Join-Path $root 'winmm.dll'
 $eoIni      = Join-Path $root 'FH2_ExtraOptions.ini'
 $eoBackups  = Join-Path $root 'backup_original\ExtraOptions'
-$tlsTarget  = 'azimuth-tls.dll.original', 'azimuth-tls.dll' | ForEach-Object { Join-Path $root "data\bin\$_" } | Where-Object { Test-Path $_ } | Select-Object -First 1
 # a read-only or hidden file (some mods and sync tools leave ini files that way) can't be rewritten: Access to the path is denied
 class Ini { static Write($path, $text, $enc) { if (Test-Path $path) { (Get-Item $path -Force).Attributes = 'Normal' }; [IO.File]::WriteAllText($path, $text, $enc) } }
 function FileHas($path, $text) { $path -and (Test-Path $path) -and [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($path)).Contains($text) }
@@ -68,14 +65,10 @@ function SyncOverrideManifests {
 }
 # the stock ExtraOptions refuses to load with settings it doesn't know, so these sections go when it comes back
 function StripForkSettings($text) { [regex]::Replace($text, '(?ms)^\[(Keyboard|Cockpit|Traffic)\]\r?\n.*?(?=^\[|\z)', '').TrimEnd() + "`n" }
-$savedKeys = Join-Path $eoBackups 'Keyboard.ini'   # the [Keyboard] section Restore took out, so the next Apply puts the player's keys back
+$savedKeys = (Join-Path $eoBackups 'Keyboard.ini'), (Join-Path $eoBackups 'Bindings.ini')   # the player's keys, for when another mod's ini replaces ours
 if ($Restore) {
-  $kb = if (Test-Path $eoIni) { [regex]::Match([IO.File]::ReadAllText($eoIni), '(?ms)^\[Keyboard\]\r?\n.*?(?=^\[|\z)') }
-  if ($kb.Success) { New-Item -ItemType Directory -Force $eoBackups | Out-Null; [Ini]::Write($savedKeys, $kb.Value, (New-Object Text.UTF8Encoding($false))) }
   foreach ($f in $zips + $loose + $tracks + 'zipmanifest.xml') { Copy-Item -Force (Join-Path $backup $f) (Join-Path $media $f) }
   SyncOverrideManifests
-  $tlsBackup = Join-Path $eoBackups 'azimuth-tls.dll'
-  if ($tlsTarget -and (Test-Path $tlsBackup) -and -not (FileHas $tlsTarget 'fh2online')) { Copy-Item -Force $tlsBackup $tlsTarget; '  ExtraOptions: original data\bin helper restored' }
   if (Test-Path (Join-Path $eoBackups 'winmm.dll')) { Copy-Item -Force (Join-Path $eoBackups 'winmm.dll') $winmm; '  ExtraOptions: original winmm.dll restored' }
   elseif (SameFile $winmm $eoDll) { Remove-Item $winmm; '  ExtraOptions: FH2 Mods winmm.dll removed' }
   foreach ($ini in $eoIni, (Join-Path $root 'data\bin\FH2_ExtraOptions.ini')) {
@@ -83,33 +76,22 @@ if ($Restore) {
   }
   'restored original files'; return
 }
-# ForzaInfinity (online play) is an ExtraOptions build in data\bin: it stays, and our winmm.dll switches itself off next to it
-$infinity = FileHas $tlsTarget 'fh2online'
-$azimuth0910 = (Get-FileHash (Join-Path $root 'azimuth.exe')).Hash -eq '78A5F635B3241918707B5ACDDEAA96BD59CCB3819490E9218EE152497CA73639'
+# Azimuth 1.0.1 and 1.0.2, the builds ExtraOptions 0.3.2 checks for
+$azimuth10 = (Get-FileHash (Join-Path $root 'azimuth.exe')).Hash -in '6E9A2290971500A133699999B3024EEC7BE93CF5D4116D18D54B8372D11172F7', '42527964F48C90A537F2414200B8598AB9A6F92919BFBE046DBECCCB36E7C597'
 $eoActive = $false
-if ($infinity) { '  ForzaInfinity found: left as it is. Ghost cars, keyboard keys and sky road are off while it is installed (uninstall ForzaInfinity to use them). Car mods make ForzaInfinity play offline.' }
-elseif (-not $azimuth0910) { '  ExtraOptions skipped: it needs Azimuth 0.9.10. Ghost cars, keyboard keys and sky road are off; everything else works.' }
-elseif ((Test-Path $winmm) -and -not (FileHas $winmm 'FH2_ExtraOptions')) { '  ExtraOptions skipped: another mod already uses winmm.dll next to azimuth.exe. Ghost cars, keyboard keys and sky road are off.' }
+if (-not $azimuth10) { '  ExtraOptions skipped: it needs Azimuth 1.0.2 (itch.io). Ghost cars, keyboard keys, world keys and sky road are off; everything else works.' }
+elseif ((Test-Path $winmm) -and -not (FileHas $winmm 'FH2_ExtraOptions')) { '  ExtraOptions skipped: another mod already uses winmm.dll next to azimuth.exe. Ghost cars, keyboard keys, world keys and sky road are off.' }
 else {
   New-Item -ItemType Directory -Force $eoBackups | Out-Null
-  if ($tlsTarget -and (FileHas $tlsTarget 'FH2_ExtraOptions')) {
-    if (-not (Test-Path (Join-Path $eoBackups 'azimuth-tls.dll'))) { Copy-Item $tlsTarget (Join-Path $eoBackups 'azimuth-tls.dll') }
-    Copy-Item -Force (Join-Path $PSScriptRoot 'ExtraOptions\azimuth-tls.stock.dll') $tlsTarget
-    "  ExtraOptions: the old ExtraOptions in data\bin was replaced by Azimuth's own helper (backed up)"
-  }
   if (-not (SameFile $winmm $eoDll)) {
     if ((Test-Path $winmm) -and -not (Test-Path (Join-Path $eoBackups 'winmm.dll'))) { Copy-Item $winmm (Join-Path $eoBackups 'winmm.dll') }
     Copy-Item -Force $eoDll $winmm
     '  ExtraOptions: installed the FH2 Mods build (winmm.dll)'
   }
-  if (-not (Test-Path $eoIni)) { Copy-Item (Join-Path $PSScriptRoot 'ExtraOptions\FH2_ExtraOptions.ini') $eoIni }
   $gamerpic = Join-Path $root 'data\bin\Gamerpic.png'
   if (-not (Test-Path (Join-Path $root 'Gamerpic.png')) -and (Test-Path $gamerpic)) { Copy-Item $gamerpic $root }
   $eoActive = $true
 }
-
-# ExtraOptions finds the game through [launcher] game_folder, which Azimuth 0.9.9 no longer writes (it may drop it again on a settings change).
-if ($azText -match '(?m)^\[launcher\]' -and $azText -notmatch '(?m)^game_folder=') { [Ini]::Write($azIni, ($azText -replace '(?m)^\[launcher\]\r?\n', "[launcher]`r`ngame_folder=$gameFolder`r`n"), [Text.Encoding]::Unicode); '  azimuth.ini: game_folder added back for ExtraOptions' }
 
 $s = Get-Content $Settings -Raw | ConvertFrom-Json
 $inv = [Globalization.CultureInfo]::InvariantCulture
@@ -224,17 +206,32 @@ if ($s.WorldControls) {
 }
 $loosePatches = @{ 'physics\PhysicsSettings.ini' = @(); 'physics\surfaceTypes.xml' = @() }
 # every car but yours stays visible but can't be hit (traffic, drivatars, race AI); only the FH2 Mods ExtraOptions knows this setting
-if ($eoActive -and (Test-Path $eoIni)) {
-  $eo = [IO.File]::ReadAllText($eoIni) -replace '(?ms)^\[Cockpit\]\r?\n.*?(?=^\[|\z)', ''   # steering wheel setting from an earlier version
-  $ghost = "GhostCars=$([int][bool]$s.GhostTraffic)"
-  $eo = if ($eo -match '(?m)^GhostCars=') { $eo -replace '(?m)^GhostCars=\d*', $ghost }
-        else { $eo.TrimEnd() + "`n`n[Traffic]`n; drive through every other car; they stay visible`n$ghost`n" }
-  if ($eo -notmatch '(?m)^\[Keyboard\]') {
-    $kb = if (Test-Path $savedKeys) { [IO.File]::ReadAllText($savedKeys) } else { "[Keyboard]`n; a letter, a digit, F1-F12, or off`nHeadlights=L`nIndicatorLeft=Q`nIndicatorRight=E`nHazards=H`n" }
-    $eo = $eo.TrimEnd() + "`n`n" + $kb
+# ExtraOptions refuses the whole ini over one setting it doesn't know, so the ini is always this version's
+# template with the player's values for the settings it has. Old [Keyboard] keys become [Bindings] ones.
+function MergeIni($template, $old) {
+  $vals = @{}; $sec = ''   # PowerShell hashtables ignore case, like ExtraOptions
+  foreach ($l in $old -split '\r?\n') {
+    if ($l -match '^\s*\[(.+?)\]') { $sec = $Matches[1] }
+    elseif ($l -match '^\s*([^;#=\s][^=]*?)\s*=\s*(.*?)\s*$') { $vals["$sec/$($Matches[1])"] = $Matches[2] }
   }
-  # kept for when another mod's own FH2_ExtraOptions.ini replaces ours
-  [Ini]::Write($savedKeys, [regex]::Match($eo, '(?ms)^\[Keyboard\]\r?\n.*?(?=^\[|\z)').Value, (New-Object Text.UTF8Encoding($false)))
+  $map = @{ 'Keyboard/Headlights' = 'HeadlightsKeyboard'; 'Keyboard/IndicatorLeft' = 'SignalLeftKeyboard'; 'Keyboard/IndicatorRight' = 'SignalRightKeyboard'; 'Keyboard/Hazards' = 'HazardsKeyboard' }
+  foreach ($k in $map.Keys) { if ($vals.ContainsKey($k) -and -not $vals.ContainsKey("Bindings/$($map[$k])")) { $vals["Bindings/$($map[$k])"] = if ($vals[$k] -in 'off', '0') { 'None' } else { $vals[$k] } } }
+  # the overlay's keys: the stock ini's F2-F4, and Home and End from a test build of this tool
+  foreach ($k in @(('AutodriveKeyboard', 'F2'), ('HeadlightsKeyboard', 'F3'), ('RoofKeyboard', 'F4'), ('AutodriveKeyboard', 'Home'), ('RoofKeyboard', 'End'))) { if ($vals["Bindings/$($k[0])"] -eq $k[1]) { $vals.Remove("Bindings/$($k[0])") } }
+  $sec = ''
+  @($template -split '\r?\n' | ForEach-Object {
+    if ($_ -match '^\[(.+?)\]') { $sec = $Matches[1]; $_ }
+    elseif ($_ -match '^([^;#=\s][^=]*?)=' -and $vals.ContainsKey("$sec/$($Matches[1])")) { "$($Matches[1])=$($vals["$sec/$($Matches[1])"])" }
+    else { $_ }
+  }) -join "`r`n"
+}
+if ($eoActive) {
+  $old = (@($savedKeys) + $eoIni | Where-Object { Test-Path $_ } | ForEach-Object { [IO.File]::ReadAllText($_) }) -join "`n"
+  $eo = MergeIni ([IO.File]::ReadAllText((Join-Path $PSScriptRoot 'ExtraOptions\FH2_ExtraOptions.ini'))) $old
+  $ghost = "GhostCars=$([int][bool]$s.GhostTraffic)"
+  $eo = $eo -replace '(?m)^GhostCars=\d*', $ghost
+  [Ini]::Write($savedKeys[1], [regex]::Match($eo, '(?ms)^\[Bindings\]\r?\n.*?(?=^\[|\z)').Value, (New-Object Text.UTF8Encoding($false)))
+  if (Test-Path $savedKeys[0]) { Remove-Item $savedKeys[0] }   # now in Bindings.ini
   [Ini]::Write($eoIni, $eo, (New-Object Text.UTF8Encoding($false)))
   "  FH2_ExtraOptions.ini: $ghost"
 } elseif ($s.GhostTraffic) { '  Ghost cars skipped: it needs the FH2 Mods ExtraOptions' }

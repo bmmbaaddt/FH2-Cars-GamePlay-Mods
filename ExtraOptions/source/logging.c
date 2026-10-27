@@ -76,7 +76,7 @@ void log_start(const wchar_t *directory, const ModOptions *options) {
         return;
     }
 #ifdef FH2_AZIMUTH
-    write_text(file, MOD_NAME " " MOD_VERSION " - Azimuth winmm proxy\r\n");
+    write_text(file, MOD_NAME " " MOD_VERSION "\r\n");
 #else
     write_text(file, MOD_NAME " " MOD_VERSION " - xg.dll hook\r\n");
 #endif

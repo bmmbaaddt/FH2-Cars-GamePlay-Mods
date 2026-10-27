@@ -1,7 +1,25 @@
 #include "patch_engine.h"
 #include "features.h"
+#include "features/local_liveries.h"
+#include "features/plugins.h"
+#include "features/offline_events.h"
+#include "features/custom_showcases.h"
+#include "features/addon_strings.h"
+#include "features/addons.h"
+#include "features/engine_swaps.h"
+#include "features/photo_environment.h"
+#include "features/transmission_swaps.h"
 #include "features/autodrive_notice.h"
+#include "features/ui_controls.h"
 #include "features/roof_fade.h"
+#include "features/roof_aero.h"
+#include "features/speed_zone.h"
+#include "features/manufacturer_jump.h"
+#include "features/presentation_controls.h"
+#include "features/driver_options.h"
+#include "features/audio_volume.h"
+#include "features/display_units.h"
+#include "features/pause_menu.h"
 #include "patches_generated.h"
 #include "support.h"
 
@@ -20,7 +38,106 @@ typedef struct {
     unsigned changed_count;
 } PatchTransaction;
 
-static const PatchDefinition *const callback_patches[] = {&garage_hook_patch,
+static const PatchDefinition *const callback_patches[] = {&local_liveries_hook_patches[0],
+                                                          &local_liveries_hook_patches[1],
+                                                          &local_liveries_hook_patches[2],
+                                                          &local_liveries_hook_patches[3],
+                                                          &local_liveries_hook_patches[4],
+                                                          &local_liveries_hook_patches[5],
+                                                          &audio_volume_hook_patches[0],
+    &audio_volume_hook_patches[1],
+                                                          &display_units_hook_patches[0],
+                                                          &display_units_hook_patches[1],
+                                                          &presentation_controls_hook_patches[0],
+                                                          &presentation_controls_hook_patches[1],
+                                                          &presentation_controls_hook_patches[2],
+                                                          &presentation_controls_hook_patches[3],
+                                                          &presentation_controls_hook_patches[4],
+                                                          &presentation_controls_hook_patches[5],
+                                                          &presentation_controls_hook_patches[6],
+                                                          &presentation_controls_hook_patches[7],
+                                                          &presentation_controls_hook_patches[8],
+                                                          &presentation_controls_hook_patches[9],
+                                                          &presentation_controls_hook_patches[10],
+                                                          &presentation_controls_hook_patches[11],
+                                                          &presentation_controls_hook_patches[12],
+                                                          &presentation_controls_hook_patches[13],
+                                                          &presentation_controls_hook_patches[14],
+                                                          &presentation_controls_hook_patches[15],
+                                                          &presentation_controls_hook_patches[16],
+                                                          &presentation_controls_hook_patches[17],
+                                                          &presentation_controls_hook_patches[18],
+                                                          &presentation_controls_hook_patches[19],
+                                                          &presentation_controls_hook_patches[20],
+                                                          &presentation_controls_hook_patches[21],
+                                                          &presentation_controls_hook_patches[22],
+                                                          &presentation_controls_hook_patches[23],
+                                                          &presentation_controls_hook_patches[24],
+                                                          &presentation_controls_hook_patches[25],
+                                                          &presentation_controls_hook_patches[26],
+                                                          &presentation_controls_hook_patches[27],
+    &presentation_controls_hook_patches[28],
+    &presentation_controls_hook_patches[29],
+    &presentation_controls_hook_patches[30],
+    &presentation_controls_hook_patches[31],
+    &presentation_controls_hook_patches[32],
+    &presentation_controls_hook_patches[33],
+    &driver_options_patches[0],
+    &driver_options_patches[1],
+    &driver_options_patches[2],
+    &driver_options_patches[3],
+    &driver_options_patches[4],
+                                                          &custom_showcases_hook_patches[0],
+                                                          &custom_showcases_hook_patches[1],
+                                                          &custom_showcases_hook_patches[2],
+                                                          &offline_events_hook_patches[0],
+                                                          &offline_events_hook_patches[1],
+                                                          &offline_events_hook_patches[2],
+                                                          &offline_events_hook_patches[3],
+                                                          &offline_events_hook_patches[4],
+                                                          &offline_events_hook_patches[5],
+                                                          &offline_events_hook_patches[6],
+                                                          &offline_events_hook_patches[7],
+                                                          &offline_events_hook_patches[8],
+                                                          &offline_events_hook_patches[9],
+                                                          &offline_events_hook_patches[10],
+                                                          &offline_events_hook_patches[11],
+                                                          &offline_events_hook_patches[12],
+                                                          &offline_events_hook_patches[13],
+                                                          &offline_events_hook_patches[14],
+                                                          &offline_events_hook_patches[15],
+                                                          &offline_events_hook_patches[16],
+                                                          &offline_events_hook_patches[17],
+                                                          &offline_events_hook_patches[18],
+                                                          &offline_events_hook_patches[19],
+                                                          &offline_events_hook_patches[20],
+                                                          &offline_events_hook_patches[21],
+                                                          &offline_events_hook_patches[22],
+                                                          &offline_events_hook_patches[23],
+                                                          &offline_events_hook_patches[24],
+                                                          &offline_events_hook_patches[25],
+                                                          &offline_events_hook_patches[26],
+                                                          &offline_events_hook_patches[27],
+                                                          &offline_events_hook_patches[28],
+                                                          &offline_events_hook_patches[29],
+                                                          &offline_events_hook_patches[30],
+                                                          &offline_events_hook_patches[31],
+                                                          &offline_events_hook_patches[32],
+                                                          &offline_events_hook_patches[33],
+                                                          &offline_events_hook_patches[34],
+                                                          &offline_events_hook_patches[35],
+    &offline_events_hook_patches[36],
+    &offline_events_hook_patches[37],
+                                                          &addon_strings_hook_patches[0],
+                                                          &video_redirect_hook_patch,
+                                                          &addon_strings_hook_patches[1],
+                                                          &engine_name_hook_patches[0],
+                                                          &engine_name_hook_patches[1],
+                                                          &addons_hook_patches[0],
+                                                          &addons_hook_patches[1],
+                                                          &addons_hook_patches[2],
+                                                          &addons_hook_patches[3],
+                                                          &garage_hook_patch,
                                                           &road_hook_patch,
                                                           &gamerpic_hook_patch,
                                                           &treasure_map_hook_patch,
@@ -32,6 +149,10 @@ static const PatchDefinition *const callback_patches[] = {&garage_hook_patch,
                                                           &aero_tuning_hook_patches[0],
                                                           &aero_tuning_hook_patches[1],
                                                           &roof_fade_hook_patch,
+                                                          &speed_zone_car_change_patch,
+                                                          &roof_aero_hook_patches[0],
+                                                          &roof_aero_hook_patches[1],
+                                                          &roof_aero_hook_patches[2],
                                                           &autodrive_hook_patches[0],
                                                           &autodrive_hook_patches[1],
                                                           &autodrive_hook_patches[2],
@@ -47,10 +168,38 @@ static const PatchDefinition *const callback_patches[] = {&garage_hook_patch,
                                                           &autodrive_hook_patches[11],
                                                           &minimap_hook_patch,
                                                           &media_overrides_hook_patch,
+                                                          &media_overrides_disk_path_hook_patch,
+
+                                                          &media_overrides_bank_diagnostics[0],
+                                                          &media_overrides_bank_diagnostics[1],
+                                                          &media_overrides_bank_diagnostics[2],
                                                           &rims_hook_patch,
                                                           &rim_name_hook_patch,
                                                           &rim_part_name_hook_patches[0],
                                                           &rim_part_name_hook_patches[1],
+                                                          &showroom_photo_hook_patches[0],
+                                                          &showroom_photo_hook_patches[1],
+                                                          &showroom_photo_hook_patches[2],
+                                                          &showroom_photo_hook_patches[3],
+                                                          &showroom_photo_hook_patches[4],
+                                                          &showroom_photo_hook_patches[5],
+                                                          &showroom_photo_hook_patches[6],
+                                                          &showroom_photo_hook_patches[7],
+                                                          &showroom_photo_hook_patches[8],
+                                                          &showroom_photo_hook_patches[9],
+                                                          &showroom_photo_hook_patches[10],
+                                                          &showroom_photo_hook_patches[11],
+                                                          &showroom_photo_hook_patches[12],
+                                                          &showroom_photo_hook_patches[13],
+                                                          &showroom_photo_hook_patches[14],
+                                                          &showroom_photo_hook_patches[15],
+                                                          &showroom_photo_hook_patches[16],
+                                                          &showroom_photo_hook_patches[17],
+                                                          &showroom_photo_hook_patches[18],
+                                                          &showroom_photo_hook_patches[19],
+    &showroom_photo_hook_patches[20],
+    &showroom_photo_hook_patches[21],
+    &showroom_photo_hook_patches[22],
                                                           &return_garage_hook_patches[0],
                                                           &return_garage_hook_patches[1],
                                                           &return_garage_hook_patches[2],
@@ -66,6 +215,10 @@ static const PatchDefinition *const callback_patches[] = {&garage_hook_patch,
                                                           &video_options_hook_patches[0],
                                                           &video_options_hook_patches[1],
                                                           &video_options_hook_patches[2],
+                                                          &video_options_hook_patches[3],
+                                                          &video_options_hook_patches[4],
+                                                          &world_drivatars_hook_patches[0],
+                                                          &world_drivatars_hook_patches[1],
                                                           &camera_fov_hook_patches[0],
                                                           &camera_fov_hook_patches[1],
                                                           &camera_fov_hook_patches[2],
@@ -73,10 +226,26 @@ static const PatchDefinition *const callback_patches[] = {&garage_hook_patch,
                                                           &camera_fov_hook_patches[4],
                                                           &camera_fov_hook_patches[5],
                                                           &photo_sampling_patch,
+                                                          &photo_capture_hook_patches[0],
+                                                          &photo_capture_hook_patches[1],
+                                                          &manufacturer_jump_hook_patches[0],
+                                                          &manufacturer_jump_hook_patches[1],
+                                                          &manufacturer_jump_hook_patches[2],
+                                                          &manufacturer_jump_hook_patches[3],
+                                                          &manufacturer_jump_hook_patches[4],
+                                                          &manufacturer_jump_hook_patches[5],
+                                                          &manufacturer_jump_hook_patches[6],
+                                                          &manufacturer_jump_hook_patches[7],
+                                                          &manufacturer_jump_hook_patches[8],
+    &manufacturer_jump_hook_patches[9],
+    &manufacturer_jump_hook_patches[10],
+    &manufacturer_jump_hook_patches[11],
+    &manufacturer_jump_hook_patches[12],
+                                                          &ui_controls_hook_patches[0],
+                                                          &ui_controls_hook_patches[1],
+                                                          &ui_controls_hook_patches[2],
                                                           &world_keys_hook_patches[0],
                                                           &world_keys_hook_patches[1],
-                                                          &random_car_hook_patches[0],
-                                                          &random_car_hook_patches[1],
                                                           &ghost_traffic_patches[0],
                                                           &ghost_traffic_patches[1],
                                                           &sky_road_hook_patches[0],
@@ -103,7 +272,10 @@ static const PatchDefinition *patch_at(unsigned index) {
 
 static int patch_group_enabled(PatchGroup group, const ModOptions *options) {
     switch (group) {
+        case GROUP_ENGINE_SWAPS:
+            return options->all_engine_swaps;
         case GROUP_CAMERA_FOV:
+        case GROUP_ADDONS:
         case GROUP_VIDEO_OPTIONS:
             return 1;
         case GROUP_PHOTO_SAMPLING:
@@ -115,7 +287,7 @@ static int patch_group_enabled(PatchGroup group, const ModOptions *options) {
         case GROUP_BOOT_CAR_MEET:
             return options->skip_car_meet_on_startup;
         case GROUP_MEDIA_OVERRIDES:
-            return options->media_overrides;
+            return options->media_overrides || addons_configured() || plugins_configured();
         case GROUP_MINIMAP:
             return 1;
         case GROUP_FRONTEND_XML:
@@ -123,6 +295,7 @@ static int patch_group_enabled(PatchGroup group, const ModOptions *options) {
         case GROUP_SUN_SHADOWS:
             return options->smooth_sun_shadows > 0;
         case GROUP_AERO_TUNING:
+            return options->unlock_aero_tuning;
         case GROUP_VEHICLE_CONTROLS:
             return 1;
         case GROUP_AUTODRIVE:
@@ -354,6 +527,9 @@ static void write_patch_sites(const PatchTransaction *transaction, int rollback)
 }
 
 static void commit_feature_options(const ModOptions *options) {
+    pause_menu_configure(options->enabled && options->cars_next_to_home);
+    engine_swaps_configure(options->all_engine_swaps);
+    transmission_swaps_configure(options->all_transmission_swaps);
     garage_commit_options(options);
     road_set_enabled(options->snap_car_to_road);
     drift_camera_commit_options(options);
@@ -394,12 +570,16 @@ int patch_engine_apply(unsigned char *game_image, const ModOptions *options) {
         return 1;
     }
     if (options->smooth_sun_shadows < -1 || options->smooth_sun_shadows > 1 ||
+        options->menu_turbo_interval_ms < 0 || options->menu_turbo_interval_ms > 1000 ||
+        (options->menu_turbo_interval_ms && options->menu_turbo_interval_ms < 20) ||
         options->photo_mode_samples < 0 || options->photo_mode_samples > 4096 ||
         (options->photo_mode_samples > 0 && options->photo_mode_samples < 16)) {
         status_set("REFUSED: invalid graphics selection. No patches applied.");
         return 0;
     }
 
+    offline_events_prepare_hooks(game_image);
+    custom_showcases_prepare_hooks(game_image);
     garage_prepare_hook(game_image);
     road_prepare_hook(game_image);
     gamerpic_prepare_hook(game_image);
@@ -410,14 +590,31 @@ int patch_engine_apply(unsigned char *game_image, const ModOptions *options) {
     livery_prepare_defaults(game_image);
     camera_fov_prepare_hooks(game_image);
     rims_prepare_hook(game_image);
+    engine_swaps_prepare_hooks(game_image);
     aero_tuning_prepare_hooks(game_image);
     return_garage_prepare_hooks(game_image);
+    showroom_photo_prepare_hooks(game_image);
+    manufacturer_jump_prepare_hooks(game_image);
+    speed_zone_prepare(game_image);
+    audio_volume_prepare_hooks(game_image);
+    display_units_prepare_hooks(game_image);
+    presentation_controls_prepare_hooks(game_image);
+    driver_options_prepare(game_image);
+    photo_environment_prepare(game_image);
     drift_camera_prepare_hook(game_image);
     video_options_prepare_hooks(game_image);
+    world_drivatars_prepare_hooks(game_image);
     media_overrides_prepare_hook(game_image);
+    video_redirect_prepare_hook(game_image);
+    media_overrides_set_enabled(options->media_overrides);
+    addons_prepare_hooks(game_image);
+    addon_strings_prepare_hooks(game_image);
     ghost_traffic_prepare_patch(options);
     sky_road_prepare_hook(game_image);
     autodrive_prepare_hooks(game_image, options);
+    ui_controls_prepare_hooks(game_image, options);
+    local_liveries_bind(game_image, options->local_drivatar_liveries,
+                       options->max_drivatar_liveries);
 
     PatchTransaction transaction;
     transaction.game_image = game_image;
@@ -460,6 +657,13 @@ __declspec(dllexport) void Fh2TestProtectFailure(int index) {
 
 __declspec(dllexport) void Fh2TestPatchPageAllocationFailure(int fail) {
     page_allocation_failure = fail;
+}
+
+__declspec(dllexport) unsigned Fh2TestPatchSiteCount(void) { return ALL_PATCH_COUNT; }
+__declspec(dllexport) void Fh2TestPatchSite(unsigned index, unsigned *rva, unsigned *size) {
+    const PatchDefinition *patch = index < ALL_PATCH_COUNT ? patch_at(index) : NULL;
+    *rva = patch ? patch->rva : 0;
+    *size = patch ? patch->size : 0;
 }
 
 __declspec(dllexport) unsigned Fh2TestPatchPageCount(void) {

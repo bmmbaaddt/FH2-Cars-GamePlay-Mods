@@ -3,6 +3,7 @@
 #include "logging.h"
 #include "autodrive_game.h"
 #include "video_options_text.h"
+#include "bindings.h"
 
 typedef void (*Action)(void *);
 typedef void **(*MakeString)(void **, const wchar_t *);
@@ -20,6 +21,24 @@ typedef struct {
 static unsigned char *image;
 static int garage_flow_ready;
 static void *confirmation_page;
+static void *input_page, *input_controller;
+static int garage_pressed;
+static unsigned char request_garage_confirmation(void *, void *);
+
+static void read_garage_binding(void *page, int initialize) {
+    void *controller; unsigned short buttons;
+    int available = autodrive_game_buttons(&controller, &buttons) == 0;
+    int ready = available || binding_keyboard(BIND_RETURN_GARAGE);
+    int pressed = !ready || !autodrive_game_window_focused() || binding_down(BIND_RETURN_GARAGE,buttons);
+    if (!initialize && input_page == page && input_controller == controller && !garage_pressed &&
+        pressed && ready && autodrive_game_window_focused() &&
+        !*(void **)((unsigned char *)page + 0x2a0)) {
+        void *delegate[2] = {NULL,page};
+        request_garage_confirmation(delegate,NULL);
+    }
+    input_page=page;input_controller=controller;garage_pressed=pressed;
+}
+
 
 static struct {
     void *page, *behavior;
@@ -217,6 +236,7 @@ static void initialize_pause(void *page) {
         pending_return.page = NULL;
     }
     ((Action)(image + 0xdc6e30))(page);
+    read_garage_binding(page,1);
     if (!garage_is_available(page)) {
         return;
     }
@@ -267,6 +287,7 @@ static void accept_garage(GarageConfirmation *self) {
 
 static void update_pause(void *page) {
     ((Action)(image + 0xdce660))(page);
+    if (garage_is_available(page)) read_garage_binding(page,0);
     if (pending_return.page != page) {
         return;
     }
@@ -317,7 +338,7 @@ static int add_button(void *buttons, int value, unsigned localized_key) {
     return 1;
 }
 
-static unsigned char show_garage_confirmation(void *delegate, void *args) {
+static unsigned char request_garage_confirmation(void *delegate, void *args) {
     (void)args;
     void *page = *(void **)((unsigned char *)delegate + 8);
     if (!garage_is_available(page)) {
@@ -355,6 +376,11 @@ static unsigned char show_garage_confirmation(void *delegate, void *args) {
     return 1;
 }
 
+static unsigned char show_garage_confirmation(void *delegate, void *args) {
+    if (binding_xbox(BIND_RETURN_GARAGE) != 0x4000) return 0;
+    return request_garage_confirmation(delegate,args);
+}
+
 void return_garage_resource_parsed(unsigned kind, unsigned char success) {
     if (kind == 5) {
         garage_flow_ready = success != 0;
@@ -366,6 +392,8 @@ void return_garage_prepare_hooks(unsigned char *base) {
     image = base;
     garage_flow_ready = 0;
     confirmation_page = NULL;
+    input_page = input_controller = NULL;
+    garage_pressed = 1;
     pending_return.page = NULL;
     awaiting_garage = 0;
     const unsigned slots[] = {0x2e14310, 0x2e20dd0, 0x2e14350, 0x2c98d10};

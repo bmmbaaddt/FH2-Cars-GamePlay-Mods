@@ -47,3 +47,19 @@ EXPORTS
     ReleaseSRWLockShared
     AcquireSRWLockExclusive
     ReleaseSRWLockExclusive
+    lstrlenW
+    CreateEventW
+    CreateThread
+    GetOverlappedResult
+    EnterCriticalSection
+    LeaveCriticalSection
+
+InitializeCriticalSection
+
+InitializeCriticalSectionAndSpinCount
+
+DeleteCriticalSection
+
+    CompareStringOrdinal
+    Sleep
+

@@ -1,6 +1,8 @@
 #include "features.h"
 #include "logging.h"
 #include "support.h"
+#include "offline_events.h"
+#include "custom_showcases.h"
 
 /* Loaded CXML4Resource text only; no archive or EXE is written. */
 #define XML_PARSE_SLOT_RVA 0x2ec4fe0u
@@ -20,7 +22,9 @@ typedef enum {
     FRONTEND_RESOURCE_PAUSE_FLOW = 2,
     FRONTEND_RESOURCE_RACE_ACTIVATION = 3,
     FRONTEND_RESOURCE_FREE_ROAM_START = 4,
-    FRONTEND_RESOURCE_GARAGE = 5
+    FRONTEND_RESOURCE_GARAGE = 5,
+    FRONTEND_RESOURCE_RACE_FLOW = 6,
+    FRONTEND_RESOURCE_POST_RACE_FLOW = 7
 } FrontendResourceKind;
 
 typedef struct {
@@ -29,9 +33,14 @@ typedef struct {
 } XmlEdit;
 
 typedef struct {
-    XmlEdit edits[12];
+    XmlEdit edits[16];
     uint32_t count, length;
 } XmlPlan;
+
+static void clear_xml_plan(XmlPlan *plan) {
+    volatile unsigned char *p=(volatile unsigned char *)plan;
+    for(size_t i=0;i<sizeof(*plan);++i)p[i]=0;
+}
 
 static XmlParseFn original_xml_parse;
 static GameAllocFn game_alloc;
@@ -48,6 +57,8 @@ static int festival_spawn_failed;
 #include "festival_flow.h"
 #include "garage_flow.h"
 #include "return_garage_flow.h"
+#include "showroom_photo_flow.h"
+#include "offline_events_fallbacks.h"
 
 /* Input disables are deque entries, not a boolean: release our entry before
    the outer pause flow releases its own. Consume the pause snapshot reference
@@ -355,7 +366,7 @@ static unsigned frontend_identify_resource(const unsigned char *resource) {
         }
     }
     const char *names[] = {"ui_screens.xml", "pause.xml", "race_trigger_activation.xml",
-                           "free_roam_start.xml", "garage.xml"};
+                           "free_roam_start.xml", "garage.xml", "race_flow.xml", "post_race_flow.xml"};
     for (unsigned kind = 1; kind <= ARRAY_COUNT(names); ++kind) {
         const char *expected = names[kind - 1];
         size_t n = text_length(expected);
@@ -397,12 +408,24 @@ static int return_garage_plan(const char *source, uint32_t length, unsigned kind
         find_first_text(source, length, "_fh2_return_") != length) {
         return 0;
     }
-    *plan = (XmlPlan){0};
+    clear_xml_plan(plan);
     uint32_t at = find_unique_text(source, length, "</stategroup>");
     if (at == length ||
         find_unique_text(source, length, "<state id=\"root_festival\">") == length) {
         return 0;
     }
+    // The native entry has already faded to black. Its looping camera establishes
+    // the frontend streaming focus; don't reveal the car until those zones load.
+    uint32_t pre = find_unique_text(source,length,"<state id=\"pre_functional_location\">");
+    if(pre==length)return 0;
+    uint32_t pre_end=pre+find_first_text(source+pre,length-pre,"</state>");
+    const char *camera="<node state=\"load_and_start_looping_cutscene\" />";
+    uint32_t camera_at=pre+find_unique_text(source+pre,pre_end-pre,camera);
+    if(pre_end>=length || camera_at>=pre_end)return 0;
+    uint32_t ready_at=camera_at+(uint32_t)text_length(camera);
+    plan->edits[plan->count++] = (XmlEdit){ready_at,ready_at,
+        "<node state=\"global.wait_one_frame\" />"
+        "<node state=\"global.wait_for_streaming\" />"};
     plan->edits[plan->count++] = (XmlEdit){at, at, return_garage_flow_xml};
     return garage_finalize_edit_plan(plan, length);
 }
@@ -429,6 +452,114 @@ static int return_garage_transform(void *game_resource, unsigned kind) {
     return 1;
 }
 
+static int showroom_photo_transform(unsigned char *resource, unsigned kind) {
+    if (kind != FRONTEND_RESOURCE_UI_SCREENS) {
+        return 0;
+    }
+    const char *source = *(char **)(resource + 0xe0);
+    uint32_t length = *(uint32_t *)(resource + 0xe8);
+    if (!source || !length || length > XML_MAX_SIZE || text_find(source, length, "_fh2_photo")) {
+        return 0;
+    }
+    const char *states[] = {"<state id=\"show_view_car\">",
+                            "<state id=\"show_view_car_from_pause\">",
+                            "<state id=\"car_color_select\">",
+                            "<state id=\"show_car_meet_car_details\">"};
+    const char *pages[] = {"<state id=\"_fh2_show_view_car\"><entry target=\".\" />"
+                           "<exit id=\"_fh2_photo\" />",
+                           "<state id=\"_fh2_show_view_car_from_pause\"><entry target=\".\" />"
+                           "<exit id=\"_fh2_photo\" />",
+                           "<state id=\"_fh2_car_color_select\"><entry target=\".\" />"
+                           "<exit id=\"_fh2_photo\" />",
+                            "<state id=\"_fh2_show_car_meet_car_details\"><entry target=\".\" /><exit id=\"_fh2_photo\" />"};
+    const char entry[] = "<entry target=\".\" />";
+    const char *behaviors[] = {"<behavior id=\"UIPageCarView\">",
+                               "<behavior id=\"UIPageCarViewPauseMenu\">",
+                               "<behavior id=\"UIPageCarColorSelect\">",
+                               "<behavior id=\"UIPageCarMeetCarDetails\">"};
+    const char *reload[] = {"<behavior id=\"UIPageCarView\" force_reload=\"true\">",
+                            "<behavior id=\"UIPageCarViewPauseMenu\" force_reload=\"true\">",
+                            "<behavior id=\"UIPageCarColorSelect\" force_reload=\"true\">",
+                            "<behavior id=\"UIPageCarMeetCarDetails\" force_reload=\"true\">"};
+    const char transition[] = "<transition id=\"_fh2_photo\" target=\"._fh2_photo\" />";
+    XmlPlan plan; clear_xml_plan(&plan);
+    for (unsigned i = 0; i < ARRAY_COUNT(states); ++i) {
+        uint32_t start = find_unique_text(source, length, states[i]);
+        if (start == length) {
+            return 0;
+        }
+        uint32_t end = start + find_first_text(source + start, length - start, "</state>");
+        if (end == length) {
+            return 0;
+        }
+        uint32_t opening = start + find_unique_text(source + start, end - start, behaviors[i]);
+        if (opening == end) {
+            return 0;
+        }
+        uint32_t behavior = opening + find_first_text(source + opening, end - opening, "</behavior>");
+        if (behavior == end) {
+            return 0;
+        }
+        uint32_t entry_at = start + find_unique_text(source + start, opening - start, entry);
+        if (entry_at == opening) {
+            return 0;
+        }
+        plan.edits[plan.count++] =
+            (XmlEdit){start, entry_at + (uint32_t)text_length(entry), pages[i]};
+        plan.edits[plan.count++] =
+            (XmlEdit){opening, opening + (uint32_t)text_length(behaviors[i]), reload[i]};
+        plan.edits[plan.count++] = (XmlEdit){behavior, behavior, transition};
+    }
+    uint32_t closing = find_unique_text(source, length, "</stategroup>");
+    if (closing == length) {
+        return 0;
+    }
+    plan.edits[plan.count++] = (XmlEdit){closing, closing, showroom_photo_flows};
+    if (!garage_finalize_edit_plan(&plan, length)) {
+        return 0;
+    }
+    char *replacement = game_alloc((size_t)plan.length + 1);
+    if (!replacement) {
+        return 0;
+    }
+    frontend_apply_xml_edits(source, length, &plan, replacement);
+    game_free((void *)source);
+    *(char **)(resource + 0xe0) = replacement;
+    *(uint32_t *)(resource + 0xe8) = plan.length;
+    return 1;
+}
+
+static int offline_career_transform(unsigned char *resource, unsigned kind) {
+    if (kind != FRONTEND_RESOURCE_RACE_FLOW && kind != FRONTEND_RESOURCE_POST_RACE_FLOW) {
+        return 0;
+    }
+    const char *source = *(char **)(resource + 0xe0);
+    uint32_t length = *(uint32_t *)(resource + 0xe8);
+    if (!source || !length || length > XML_MAX_SIZE || text_find(source, length, "_fh2_career_")) {
+        return 0;
+    }
+    XmlPlan plan; clear_xml_plan(&plan);
+    for (unsigned i = 0; i < ARRAY_COUNT(offline_career_fallbacks); ++i) {
+        const OfflineCareerFallback *rule = &offline_career_fallbacks[i];
+        if (kind != rule->kind) continue;
+        uint32_t start = find_unique_text(source, length, rule->state);
+        if (start == length) return 0;
+        uint32_t end = start + find_first_text(source + start, length - start, "</state>");
+        if (end == length) return 0;
+        uint32_t node = start + find_unique_text(source + start, end - start, rule->node);
+        if (node == end) return 0;
+        plan.edits[plan.count++] = (XmlEdit){node, node + (uint32_t)text_length(rule->node), rule->replacement};
+    }
+    if (!garage_finalize_edit_plan(&plan, length)) return 0;
+    char *replacement = game_alloc((size_t)plan.length + 1);
+    if (!replacement) return 0;
+    frontend_apply_xml_edits(source, length, &plan, replacement);
+    game_free((void *)source);
+    *(char **)(resource + 0xe0) = replacement;
+    *(uint32_t *)(resource + 0xe8) = plan.length;
+    return 1;
+}
+
 static unsigned char frontend_parse_resource_hook(void *game_resource) {
     unsigned char *resource = game_resource;
     unsigned resource_kind = frontend_identify_resource(resource);
@@ -436,7 +567,7 @@ static unsigned char frontend_parse_resource_hook(void *game_resource) {
     int festival = resource_kind == FRONTEND_RESOURCE_FREE_ROAM_START;
     int enabled = festival                                    ? spawn_at_festival
                   : race_dialogue                             ? skip_ineligible_car_dialogue
-                  : resource_kind == FRONTEND_RESOURCE_GARAGE ? 0
+                  : resource_kind >= FRONTEND_RESOURCE_GARAGE ? 0
                                                               : garage_enabled;
     int failed = __atomic_load_n(festival        ? &festival_spawn_failed
                                  : race_dialogue ? &race_dialogue_failed
@@ -494,7 +625,29 @@ static unsigned char frontend_parse_resource_hook(void *game_resource) {
         }
     }
     int return_garage_ready = return_garage_transform(resource, resource_kind);
+    int photo_ready = showroom_photo_transform(resource, resource_kind);
+    int events_ready = resource_kind == FRONTEND_RESOURCE_RACE_ACTIVATION ? offline_events_transform(resource) : 0;
+    int showcases_ready = custom_showcases_transform(resource, resource_kind);
+    int career_ready = offline_career_transform(resource, resource_kind);
     unsigned char result = original_xml_parse(resource);
+    if (resource_kind == FRONTEND_RESOURCE_RACE_FLOW) {
+        custom_showcases_resource_parsed(resource_kind, result && showcases_ready);
+    }
+    if (resource_kind >= FRONTEND_RESOURCE_RACE_FLOW) {
+        if (!result || !career_ready) offline_events_resource_parsed(0);
+        log_append(result && career_ready ? "EVENTS: standalone race career fallbacks ready.\r\n" : "EVENTS: unsupported race lifecycle; offline event points disabled.\r\n");
+    }
+    if (resource_kind == FRONTEND_RESOURCE_RACE_ACTIVATION) {
+        offline_events_resource_parsed(result && events_ready);
+        custom_showcases_resource_parsed(resource_kind, result && showcases_ready);
+        log_append(result && events_ready ? "EVENTS: offline race setup flow ready.\r\n" : "EVENTS: unsupported race flow; offline event points disabled.\r\n");
+    }
+    if (resource_kind == FRONTEND_RESOURCE_UI_SCREENS) {
+        showroom_photo_resource_parsed(result && photo_ready);
+        log_append(result && photo_ready
+                       ? "SHOWROOM: Photo Mode preview transitions ready.\r\n"
+                       : "SHOWROOM: Photo Mode shortcut disabled; unsupported flow.\r\n");
+    }
     if (resource_kind == FRONTEND_RESOURCE_GARAGE) {
         return_garage_resource_parsed(resource_kind, result && return_garage_ready);
         if (!return_garage_ready) {
@@ -547,7 +700,9 @@ void garage_commit_options(const ModOptions *options) {
     spawn_at_festival = options->spawn_at_festival && options->skip_car_meet_on_startup;
 }
 
-void *garage_callback_address(void) { return (void *)frontend_parse_resource_hook; }
+void *garage_callback_address(void) {
+    return (void *)frontend_parse_resource_hook;
+}
 #ifdef FH2_TWEAKS_TEST
 __declspec(dllexport) uint32_t Fh2TestReturnGarageXml(const char *source, uint32_t length,
                                                       unsigned kind, char *output,

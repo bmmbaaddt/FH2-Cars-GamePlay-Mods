@@ -1,9 +1,4 @@
 .text
-.globl azimuth_load_library
-azimuth_load_library:
-    movq %rdi, %r9
-    jmp azimuth_on_load_library
-
 .macro FORWARD index
 .globl fh2_winmm_\index
 .seh_proc fh2_winmm_\index

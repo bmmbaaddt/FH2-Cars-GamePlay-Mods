@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "version": "0.2.98",
+  "version": "0.3.2",
   "filename": "forza_durango_release_final.exe",
   "size": 58204160,
   "original_sha256": "3ec04c6163fb5614e3d351ba0570d39b846041a257715d6340eceb03ccb7f0a3",
@@ -849,7 +849,7 @@
         "e8fa9b0000"
       ],
       "runtime_group": "AERO_TUNING",
-      "description": "Supply actual adjustable downforce and drag ranges for non-adjustable aero parts; preserve stock physics at the default slider value."
+      "description": "Map fixed aero to the matching race aero range and default. Experimental; can alter PI and handling. Disabled by default."
     },
     {
       "id": "rear_aero_physics_ranges",
@@ -863,7 +863,7 @@
         "e8af990000"
       ],
       "runtime_group": "AERO_TUNING",
-      "description": "Supply actual adjustable downforce and drag ranges for non-adjustable aero parts; preserve stock physics at the default slider value."
+      "description": "Map fixed aero to the matching race aero range and default. Experimental; can alter PI and handling. Disabled by default."
     },
     {
       "id": "sun_shadow_all_cascades_per_frame",
@@ -1229,6 +1229,48 @@
         "e85c1d0000"
       ],
       "runtime_group": "VEHICLE_CONTROLS"
+    },
+    {
+      "id": "factory_rim_size_category_lock",
+      "group": "rims",
+      "rva": 15428144,
+      "offset": 15425584,
+      "original": "e86be9ffff",
+      "patched": "31c0909090",
+      "accepted": [
+        "e86be9ffff",
+        "31c0909090"
+      ],
+      "runtime_group": "RIMS",
+      "description": "Allow current factory wheels to use native front/rear diameter upgrades; remove only the stock-wheel menu lock."
+    },
+    {
+      "id": "factory_rim_size_category_select",
+      "group": "rims",
+      "rva": 15465285,
+      "offset": 15462725,
+      "original": "e85658ffff",
+      "patched": "31c0909090",
+      "accepted": [
+        "e85658ffff",
+        "31c0909090"
+      ],
+      "runtime_group": "RIMS",
+      "description": "Allow current factory wheels to use native front/rear diameter upgrades; remove only the stock-wheel menu lock."
+    },
+    {
+      "id": "factory_rim_size_part_lock",
+      "group": "rims",
+      "rva": 15466296,
+      "offset": 15463736,
+      "original": "e86354ffff",
+      "patched": "31c0909090",
+      "accepted": [
+        "e86354ffff",
+        "31c0909090"
+      ],
+      "runtime_group": "RIMS",
+      "description": "Allow current factory wheels to use native front/rear diameter upgrades; remove only the stock-wheel menu lock."
     }
   ],
   "delivery": "runtime-dll",
@@ -1751,6 +1793,123 @@
       "original": "cccccccccccccccccccccccc",
       "runtime_group": "VEHICLE_CONTROLS",
       "type": "callback_thunk_in_unused_padding",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "addon_database_open_thunk",
+      "rva": 17361364,
+      "original": "cccccccccccccccccccccccc",
+      "runtime_group": "ADDONS",
+      "type": "callback_thunk_in_unused_padding",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "addon_sqlite_open_thunk",
+      "rva": 17356068,
+      "original": "cccccccccccccccccccccccc",
+      "runtime_group": "ADDONS",
+      "type": "callback_thunk_in_unused_padding",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "addon_database_open",
+      "rva": 16143138,
+      "original": "e8d9951200",
+      "runtime_group": "ADDONS",
+      "type": "relative_call_to_callback_thunk",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "addon_sqlite_open",
+      "rva": 17379630,
+      "original": "e88da5fefe",
+      "runtime_group": "ADDONS",
+      "type": "relative_call_to_callback_thunk",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "addon_string_table_thunk",
+      "rva": 19158292,
+      "original": "cccccccccccccccccccccccc",
+      "runtime_group": "ADDONS",
+      "type": "callback_thunk_in_unused_padding",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "addon_string_table_load",
+      "rva": 19158081,
+      "original": "e8ea1a0000",
+      "runtime_group": "ADDONS",
+      "type": "relative_call_to_callback_thunk",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "mod_video_file_redirect",
+      "rva": 48924240,
+      "original_function_rva": 18482960,
+      "runtime_group": "MEDIA_OVERRIDES",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "showroom_photo_view",
+      "rva": 48051984,
+      "original_function_rva": 13427328,
+      "runtime_group": "VIDEO_OPTIONS",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "showroom_photo_pause_view",
+      "rva": 47594744,
+      "original_function_rva": 13602176,
+      "runtime_group": "VIDEO_OPTIONS",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "showroom_photo_autoshow",
+      "rva": 48000032,
+      "original_function_rva": 13277600,
+      "runtime_group": "VIDEO_OPTIONS",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "showroom_photo_view_input",
+      "rva": 48052048,
+      "original_function_rva": 13440656,
+      "runtime_group": "VIDEO_OPTIONS",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "showroom_photo_pause_input",
+      "rva": 47594808,
+      "original_function_rva": 13440656,
+      "runtime_group": "VIDEO_OPTIONS",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "showroom_photo_autoshow_input",
+      "rva": 48000096,
+      "original_function_rva": 13295024,
+      "runtime_group": "VIDEO_OPTIONS",
+      "type": "relocated_vtable_pointer",
       "file_normalized": false,
       "option": "Global.Enabled"
     }

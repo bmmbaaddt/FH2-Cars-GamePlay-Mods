@@ -2,13 +2,16 @@
 #include "blinkers.h"
 #include "autodrive_game.h"
 #include "features.h"
-#include "game_input.h"
-#include "world_keys.h"
 #include "roof_fade.h"
+#include "roof_aero.h"
+#include "world_keys.h"
 #include "support.h"
+#include "bindings.h"
+#include "offline_events.h"
+#include "local_liveries.h"
+#include "plugins.h"
 
-#define RIGHT_STICK_BUTTON 0x80
-#define ROOF_HOLD_MILLISECONDS 2000u
+#define ROOF_HOLD_MILLISECONDS 1500u
 #define ROOF_BRANCH_SETTLE_MILLISECONDS 350u
 #define ROOF_FADE_MILLISECONDS 350u
 #define ROOF_COVER_MILLISECONDS 750u
@@ -42,7 +45,7 @@ PatchDefinition vehicle_controls_hook_patch;
 typedef struct {
     void *controller, *car, *animation;
     uint64_t pressed_at;
-    int blocked, pending, consumed, stationary, roof_blocked, freeroam;
+    int blocked, pending, consumed, stationary, roof_blocked, freeroam, lights, roof_hold;
 } VehicleGesture;
 
 static VehicleGesture gesture = {.blocked = 1};
@@ -53,9 +56,6 @@ typedef struct {
 } HeadlightState;
 
 static HeadlightState headlights;
-
-enum { KEY_HEADLIGHTS, KEY_LEFT, KEY_RIGHT, KEY_HAZARDS, KEY_COUNT };
-static int keys[KEY_COUNT], keys_down[KEY_COUNT];
 
 typedef struct {
     void *car, *animation;
@@ -124,8 +124,9 @@ void vehicle_controls_bind(unsigned char *image) {
     game_image = image;
     blinkers_bind(image, clock_milliseconds);
     roof_fade_prepare_hook(image);
+    roof_aero_prepare_hooks(image);
     world_keys_prepare_hook(image);
-    random_car_prepare_hooks(image);
+    random_car_bind(image);
     uintptr_t original = (uintptr_t)(image + 0x2a9400);
     uintptr_t replacement = (uintptr_t)vehicle_update;
     memory_copy(original_callback, &original, 8);
@@ -140,13 +141,6 @@ void vehicle_controls_bind(unsigned char *image) {
                                                     replacement_callback,
                                                     accepted_callbacks,
                                                     ARRAY_COUNT(accepted_callbacks)};
-}
-
-void vehicle_controls_set_keys(int headlights_key, int left, int right, int hazards) {
-    keys[KEY_HEADLIGHTS] = headlights_key;
-    keys[KEY_LEFT] = left;
-    keys[KEY_RIGHT] = right;
-    keys[KEY_HAZARDS] = hazards;
 }
 
 static void cancel_gesture(void) {
@@ -210,6 +204,48 @@ static void *car_animation(void *car) {
         return NULL;
     }
     return animation;
+}
+
+// Photo Mode pauses the normal car update which publishes lighting parameters.
+// Refresh only the native light-expression/material packet, not the vehicle or
+// physics update. Give light fades a single settling tick so they do not remain
+// at the pre-photo intensity while the simulation is frozen.
+static void refresh_photo_lights(void *car){
+    void *presentation,*vtable,*controllers,*first;uintptr_t publish;
+    if(!memory_read_pointer((unsigned char *)car+0x4d38,&presentation) ||
+       !memory_read_pointer(presentation,&vtable) ||
+       !memory_read((unsigned char *)vtable+0x250,&publish,sizeof(publish)) ||
+       publish<(uintptr_t)game_image+0x1000 || publish>=(uintptr_t)game_image+0x1dcc000 ||
+       !memory_read_pointer((unsigned char *)car+0x51c0,&controllers) ||
+       !memory_read_pointer(controllers,&first))return;
+    ((void (*)(void *,float))(game_image+0xf5c900))(car,1.0f);
+}
+
+static struct {void *car,*animation;unsigned char manual,forced;int value;HeadlightState previous;} photo_lights;
+void vehicle_photo_lights_begin(void){
+    photo_lights.car=NULL;photo_lights.value=0;
+    void *car=autodrive_game_get_car();if(!car)return;
+    if(memory_read((unsigned char *)car+0x51a1,&photo_lights.manual,1) && memory_read((unsigned char *)car+0x51a2,&photo_lights.forced,1)){
+        photo_lights.car=car;photo_lights.animation=car_animation(car);photo_lights.previous=headlights;
+    }
+    autodrive_game_release_car(car);
+}
+int vehicle_photo_lights_get(void){return photo_lights.value;}
+int vehicle_photo_lights_set(int value){
+    if(value<0 || value>2 || value==photo_lights.value || !photo_lights.car)return 0;
+    void *car=autodrive_game_get_car();if(!car)return 0;
+    if(car!=photo_lights.car || car_animation(car)!=photo_lights.animation){autodrive_game_release_car(car);return 0;}
+    unsigned char enabled=value?(value==2):photo_lights.forced;
+    ((HeadlightSetter)(game_image+0xf74ef0))(car,enabled);
+    ((HeadlightSetter)(game_image+0xf74ee0))(car,value?1:photo_lights.manual);
+    if(value)headlights=(HeadlightState){car,photo_lights.animation,1,enabled};
+    else headlights=photo_lights.previous;
+    refresh_photo_lights(car);
+    photo_lights.value=value;autodrive_game_release_car(car);return 1;
+}
+void vehicle_photo_lights_end(void){
+    if(photo_lights.value)vehicle_photo_lights_set(0);
+    photo_lights.car=NULL;photo_lights.value=0;
 }
 
 static void finish_roof_transition(void) {
@@ -398,26 +434,13 @@ static void close_roof_for_car_meet(void *car) {
     roof_transition.accelerated = 0;
 }
 
-// Keys that went down since the last frame: headlights toggle, indicators go through the blinkers.
-static void keyboard_tick(void *car, int focused) {
-    for (int i = 0; i < KEY_COUNT; ++i) {
-        int down = focused && game_input_key_down(keys[i]);
-        if (down && !keys_down[i]) {
-            if (i == KEY_HEADLIGHTS) {
-                toggle_headlights(car);
-            } else {
-                blinkers_toggle(car, i);
-            }
-        }
-        keys_down[i] = down;
-    }
-}
-
 static void vehicle_controls_tick(void *car, int focused) {
     void *controller;
     unsigned short buttons;
     int available = autodrive_game_buttons(&controller, &buttons) == 0;
-    int down = available && (buttons & RIGHT_STICK_BUTTON);
+    int lights_down = binding_down(BIND_HEADLIGHTS, buttons);
+    int roof_down = binding_down(BIND_ROOF, buttons);
+    int down = lights_down || roof_down;
     if (!focused || !available || controller != gesture.controller) {
         cancel_gesture();
         gesture.controller = controller;
@@ -448,7 +471,9 @@ static void vehicle_controls_tick(void *car, int focused) {
         gesture.consumed = 0;
         gesture.freeroam = freeroam;
         gesture.pressed_at = clock_milliseconds();
-        gesture.stationary = freeroam && car_is_stationary(car);
+        gesture.lights = lights_down;
+        gesture.roof_hold = roof_down;
+        gesture.stationary = roof_down && freeroam && car_is_stationary(car);
         gesture.roof_blocked = roof_is_busy(car);
     } else if (gesture.car != car || gesture.animation != animation) {
         cancel_gesture();
@@ -456,15 +481,19 @@ static void vehicle_controls_tick(void *car, int focused) {
         if (!gesture.consumed && gesture.stationary) {
             gesture.stationary = car_is_stationary(car);
         }
+        if (down && !roof_down) {
+            gesture.roof_hold = 0;
+        }
         uint64_t now = clock_milliseconds();
-        if (!gesture.consumed && now - gesture.pressed_at >= ROOF_HOLD_MILLISECONDS) {
+        if (!gesture.consumed && gesture.roof_hold &&
+            now - gesture.pressed_at >= ROOF_HOLD_MILLISECONDS) {
             gesture.consumed = 1;
             if (gesture.stationary && !gesture.roof_blocked) {
                 request_roof_toggle(car, animation, now);
             }
         }
         if (!down) {
-            if (!gesture.consumed) {
+            if (!gesture.consumed && gesture.lights) {
                 toggle_headlights(car);
             }
             gesture.pending = 0;
@@ -576,13 +605,14 @@ static void vehicle_update(void *self, float dt, float frame_dt, unsigned frame)
     void *local_car = autodrive_game_get_car();
     int owned = local_car == self;
     if (owned) {
-        int focused = autodrive_game_window_focused();
-        keyboard_tick(local_car, focused);
-        blinkers_tick(local_car, focused, clock_milliseconds());
-        world_keys_tick(focused);
+        plugins_vehicle_update(local_car, dt);
+        offline_events_tick();
+        autodrive_event_tick(local_car, dt);
+        blinkers_tick(local_car, autodrive_game_window_focused(), clock_milliseconds());
+        world_keys_tick(autodrive_game_window_focused());
         sky_road_car_tick(local_car);
         close_roof_for_car_meet(local_car);
-        vehicle_controls_tick(local_car, focused);
+        vehicle_controls_tick(local_car, autodrive_game_window_focused());
         maintain_controls(self);
     }
     ((CarUpdate)(game_image + 0x2a9400))(self, dt, frame_dt, frame);
@@ -591,6 +621,7 @@ static void vehicle_update(void *self, float dt, float frame_dt, unsigned frame)
     }
     if (owned) {
         return_garage_tick();
+        local_liveries_tick(local_car);
     }
     autodrive_game_release_car(local_car);
 }

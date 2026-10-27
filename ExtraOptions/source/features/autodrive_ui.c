@@ -13,7 +13,19 @@ void autodrive_ui_prepare(unsigned char *image) {
 }
 
 void autodrive_ui_set_hidden(int hidden) {
-    InterlockedExchange(&rendering_disabled, hidden != 0);
+    if (hidden) {
+        InterlockedOr(&rendering_disabled, 1);
+    } else {
+        InterlockedAnd(&rendering_disabled, ~1L);
+    }
+}
+
+void autodrive_ui_toggle_manual(void) {
+    InterlockedXor(&rendering_disabled, 2);
+}
+
+void autodrive_ui_restore_manual(void) {
+    InterlockedAnd(&rendering_disabled, ~2L);
 }
 
 void autodrive_ui_present(void *application, void *transform) {

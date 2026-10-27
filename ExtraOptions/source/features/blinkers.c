@@ -2,6 +2,7 @@
 #include "autodrive_game.h"
 #include "features.h"
 #include "support.h"
+#include "bindings.h"
 
 enum {
     DPAD_UP = 1,
@@ -9,7 +10,8 @@ enum {
     DPAD_RIGHT = 8,
     HAZARDS = 16,
     DPAD_SIGNALS = DPAD_UP | DPAD_LEFT | DPAD_RIGHT,
-    INDICATOR_HOLD_MS = 1000,
+    INDICATOR_HOLD_MS = 500,
+    PHOTO_HOLD_MS = 1000,
     RADIO_RELEASE_MS = 200
 };
 
@@ -21,7 +23,7 @@ typedef struct {
     void *controller, *car;
     uint64_t pressed_at, last_tick, radio_deadline;
     unsigned held, active, radio_release;
-    int blocked, consumed, turned, photo_ready;
+    int blocked, consumed, turned, photo_ready, can_photo, can_hazard;
 } BlinkerState;
 
 static BlinkerState state = {.blocked = 1};
@@ -55,7 +57,9 @@ PatchDefinition hazards_photo_ready_hook_patch = {0x965464,
                                                   photo_ready_accepted,
                                                   ARRAY_COUNT(photo_ready_accepted)};
 
-void blinkers_reset(void) { state = (BlinkerState){.blocked = 1}; }
+void blinkers_reset(void) {
+    state = (BlinkerState){.blocked = 1};
+}
 
 void blinkers_bind(unsigned char *game_image, uint64_t (*clock)(void)) {
     if (image != game_image) {
@@ -75,6 +79,20 @@ void blinkers_bind(unsigned char *game_image, uint64_t (*clock)(void)) {
     memory_copy(photo_ready_thunk + 2, &callback, sizeof(callback));
 }
 
+static unsigned signal_buttons(unsigned physical) {
+    unsigned buttons = 0;
+    if (binding_down(BIND_SIGNAL_LEFT, physical)) {
+        buttons |= DPAD_LEFT;
+    }
+    if (binding_down(BIND_SIGNAL_RIGHT, physical)) {
+        buttons |= DPAD_RIGHT;
+    }
+    if (binding_down(BIND_HAZARDS, physical) || binding_down(BIND_PHOTO, physical)) {
+        buttons |= DPAD_UP;
+    }
+    return buttons;
+}
+
 static void cancel_hold(void) {
     state.held = state.radio_release = 0;
     state.photo_ready = 0;
@@ -82,15 +100,8 @@ static void cancel_hold(void) {
 }
 
 static int accepts_signal_input(void *controller) {
-    if (autodrive_game_has_gameplay_input(controller)) {
-        switch (autodrive_game_presentation_mode()) {
-        case 3:  // Race/free roam
-        case 4:  // Race with collidables
-        case 6:  // Race
-        case 9:  // Splitscreen
-        case 12: // Player LOD0
-            return 1;
-        }
+    if (autodrive_game_can_drive(controller)) {
+        return 1;
     }
     cancel_hold();
     return 0;
@@ -121,7 +132,7 @@ void blinkers_tick(void *car, int focused, uint64_t now) {
     void *controller;
     unsigned short buttons;
     int available = autodrive_game_buttons(&controller, &buttons) == 0;
-    unsigned down = buttons & DPAD_SIGNALS;
+    unsigned down = signal_buttons(buttons);
     if (car != state.car) {
         state.active = state.turned = 0;
         cancel_hold();
@@ -162,11 +173,18 @@ void blinkers_tick(void *car, int focused, uint64_t now) {
             state.pressed_at = now;
             state.consumed = 0;
             state.radio_release = 0;
+            state.can_photo = binding_down(BIND_PHOTO, buttons);
+            state.can_hazard = binding_down(BIND_HAZARDS, buttons);
         }
-    } else if (down && down != state.held) {
+    } else if (down && (down != state.held ||
+                        (state.held == DPAD_UP &&
+                         (state.can_photo != binding_down(BIND_PHOTO, buttons) ||
+                          state.can_hazard != binding_down(BIND_HAZARDS, buttons))))) {
         cancel_hold();
     } else {
-        if (!state.consumed && now - state.pressed_at >= INDICATOR_HOLD_MS) {
+        unsigned hold_ms = state.held == DPAD_UP ? PHOTO_HOLD_MS : INDICATOR_HOLD_MS;
+        if (!state.consumed && (state.held != DPAD_UP || state.can_photo) &&
+            now - state.pressed_at >= hold_ms) {
             state.consumed = 1;
             if (state.held == DPAD_UP) {
                 state.photo_ready = 1;
@@ -179,14 +197,14 @@ void blinkers_tick(void *car, int focused, uint64_t now) {
         }
         if (!down) {
             if (!state.consumed) {
-                if (state.held == DPAD_UP) {
+                if (state.held == DPAD_UP && state.can_hazard) {
                     if (state.active == HAZARDS) {
                         stop_lights(car);
                     } else {
                         state.active = HAZARDS;
                         state.turned = 0;
                     }
-                } else {
+                } else if (state.held != DPAD_UP) {
                     state.radio_release = state.held;
                     state.radio_deadline = now + RADIO_RELEASE_MS;
                 }
@@ -209,12 +227,12 @@ static unsigned char radio_query(void *controller, unsigned device, unsigned act
         return ((RadioQuery)(image + 0x1072500))(controller, device, action, consume);
     }
     uint64_t now = milliseconds();
-    if ((buttons & DPAD_SIGNALS || state.held) && state.last_tick != now) {
+    if ((signal_buttons(buttons) || state.held) && state.last_tick != now) {
         void *car = autodrive_game_get_car();
         blinkers_tick(car, 1, now);
         autodrive_game_release_car(car);
     }
-    if (buttons & (DPAD_LEFT | DPAD_RIGHT)) {
+    if (signal_buttons(buttons) & (DPAD_LEFT | DPAD_RIGHT)) {
         return 0;
     }
     if (state.controller == controller && state.radio_release & side) {
@@ -233,9 +251,9 @@ static float photo_query(void *controller, unsigned device, unsigned action) {
         return ((float (*)(void *, unsigned, unsigned))(image + 0x106f040))(controller, device,
                                                                             action);
     }
-    int pending = (buttons & DPAD_UP) || state.held == DPAD_UP || state.photo_ready;
+    int pending = (signal_buttons(buttons) & DPAD_UP) || state.held == DPAD_UP || state.photo_ready;
     uint64_t now = milliseconds();
-    if ((buttons & DPAD_SIGNALS || state.held) && state.last_tick != now) {
+    if ((signal_buttons(buttons) || state.held) && state.last_tick != now) {
         void *car = autodrive_game_get_car();
         blinkers_tick(car, 1, now);
         autodrive_game_release_car(car);
@@ -254,32 +272,15 @@ static unsigned char photo_hold_ready(void *owner) {
     unsigned short buttons;
     if (state.photo_ready && state.held == DPAD_UP && !state.blocked &&
         autodrive_game_buttons(&controller, &buttons) == 0 && controller == state.controller &&
-        (buttons & DPAD_SIGNALS) == DPAD_UP && accepts_signal_input(controller) &&
+        signal_buttons(buttons) == DPAD_UP && accepts_signal_input(controller) &&
         autodrive_game_window_focused()) {
         return 1;
     }
     return ((unsigned char (*)(void *))(image + 0x963480))(owner);
 }
 
-void blinkers_toggle(void *car, int which) {
-    static const unsigned modes[4] = {0, DPAD_LEFT, DPAD_RIGHT, HAZARDS};
-    if (!car || which < 1 || which > 3) {
-        return;
-    }
-    if (car != state.car) {
-        state.active = state.turned = 0;
-        cancel_hold();
-        state.car = car;
-    }
-    if (state.active == modes[which]) {
-        stop_lights(car);
-    } else {
-        state.active = modes[which];
-        state.turned = 0;
-        update_lights(car);
-    }
-}
-
 #ifdef FH2_TWEAKS_TEST
-__declspec(dllexport) unsigned Fh2TestBlinkerSide(void) { return state.active; }
+__declspec(dllexport) unsigned Fh2TestBlinkerSide(void) {
+    return state.active;
+}
 #endif

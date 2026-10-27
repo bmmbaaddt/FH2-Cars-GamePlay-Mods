@@ -2,6 +2,8 @@
 
 A settings window for **Forza Horizon 2 (Xbox One)** running on **Azimuth**. Change traffic, crashes, money, skills, the cockpit camera and per-car performance from one window, and get keyboard keys for lights, indicators, time and weather. No file editing: just change values and press Apply.
 
+**1.3 needs Azimuth 1.0.2** and comes with ExtraOptions 0.3.2 (see [Requirements](#requirements)).
+
 Since 1.1.0 there is also an **in-game overlay** (press `Insert` while driving): boost, nitrous, launch control, drift, stunts, UFO mode, teleport, cruise control, run timers, a drag light tree and on-screen gauges. Since 1.2 it has **game modes** too: speed bomb, score attack and pursuit (see [Game modes](#game-modes)).
 
 ## Two menus that work together
@@ -41,28 +43,20 @@ Use both at the same time: set your car mods and packs in the window, press **Ap
 
 ## Keyboard shortcuts
 
-**While driving** (always on):
+**While driving** (from ExtraOptions):
 
-| Key | Action |
-|---|---|
-| `L` | Headlights on/off |
-| `Q` | Left indicator (press again to switch off) |
-| `E` | Right indicator (press again to switch off) |
-| `H` | Hazard lights (press again to switch off) |
+| Key | Controller | Action |
+|---|---|---|
+| `L` | Tap right stick | Headlights on/off |
+| Hold `Q` / `E` (0.5 s) | Hold D-pad left / right | Left / right indicator (switches off by itself after the turn) |
+| `H` | Tap D-pad up | Hazard lights |
+| `K` (hold 1.5 s, stopped) | Hold right stick | Roof on/off, on cars that have one |
+| `J` | D-pad down | Autodrive to the GPS route |
+| `F1` | | Hide / show the HUD |
 
-**In My Cars** (the garage car list, from the main menu or the pause menu): click the **right stick** or press **`R`** to jump to a random car of your garage, then press A to drive it.
+**In My Cars** (the garage car list, from the main menu or the pause menu): click the **right stick** or press **`R`** to jump to a random car of your garage, then press A to drive it. `Tab` or View is ExtraOptions' Jump to Manufacturer.
 
-You can change these keys in `FH2_ExtraOptions.ini` next to `azimuth.exe`, section `[Keyboard]`: use a letter, a digit, F1–F12, or `off`. Anything else (arrow keys, punctuation) makes ExtraOptions refuse the whole file. Your keys are kept through Restore originals and when another mod replaces that file (since 1.2), so it does not need to be read-only. FH2 has no horn, so there is no horn key.
-
-**On a controller** (from ExtraOptions 0.2.98):
-
-| Button | Action |
-|---|---|
-| Hold D-pad left / right (1 s) | Left / right indicator (switches off by itself after the turn) |
-| Tap D-pad up | Hazard lights |
-| Tap right stick | Headlights |
-
-The keyboard and the controller switch the same indicators.
+Change these keys in `FH2_ExtraOptions.ini` next to `azimuth.exe`, section `[Bindings]`: a letter, a digit, F1–F24, arrows, Space, Enter, Home, End, Page Up/Down, Insert, Delete, or `None`, and Xbox buttons such as `LB+Y`. Leave F2–F12, Home, End, Insert and Delete alone if you use the overlay, which has those keys. Apply keeps your keys (also through Restore originals and when another mod replaces that file), and keys from the old `[Keyboard]` section are moved over. FH2 has no horn, so there is no horn key.
 
 **World keys** (free roam, tick *World keys* in the window):
 
@@ -138,9 +132,9 @@ Pursuit notes (experimental):
 ## Requirements
 
 - Windows 10 or 11 (PowerShell 5.1 and .NET Framework 4.8, for the overlay, are built in)
-- Forza Horizon 2 for Xbox One (1.0.0.64) on **Azimuth 0.9.10** (0.9.9 works too, without ghost cars, keyboard keys and sky road)
+- Forza Horizon 2 for Xbox One (1.0.0.64) on **Azimuth 1.0.2** (1.0.1 works too). On an older Azimuth everything works except ghost cars, ExtraOptions' keys, world keys and sky road; update Azimuth from [itch.io](https://almost-there-games.itch.io/azimuth) (your saves carry over)
 - **Python 3** on PATH, for the car list and car mods ([python.org](https://www.python.org/downloads/): tick **"Add python.exe to PATH"** when installing)
-- **[ExtraOptions](https://github.com/RokkuDayo/ForzaHorizon2_ExtraOptions) is included.** Apply installs ExtraOptions 0.2.98 with this tool's additions as `winmm.dll` next to `azimuth.exe`, with its settings in `FH2_ExtraOptions.ini` beside it. An older ExtraOptions in `data\bin` is backed up and swapped for Azimuth's own helper; Restore originals puts everything back. You also get everything new in 0.2.98: D-pad indicators, aero tuning without Forza aero, Return to Garage in the pause menu, the new drift camera, stock rims and livery quality in the in-game Video settings. Works with the LivingCockpit loader too.
+- **[ExtraOptions](https://github.com/RokkuDayo/ForzaHorizon2_ExtraOptions) is included.** Apply installs ExtraOptions 0.3.2 with this tool's additions (ghost cars, world keys, random car, sky road) as `winmm.dll` next to `azimuth.exe`, with its settings in `FH2_ExtraOptions.ini` beside it; Restore originals puts back the one you had. You also get everything new in 0.3: its `mods` folder loader, Jump to Manufacturer, all online races offline, custom showcases, F1 to hide the HUD, photo mode from the garage, more audio and HUD options, and every key set in the ini. Its own settings are in the in-game menus.
 
 ## Setup
 
@@ -165,20 +159,6 @@ Updating from an older version: replace the whole **FH2 Mods** folder (keep your
 - Keep your total CR under about 2,000,000,000: the game may store it as a 32-bit number.
 - Ghost cars applies to race opponents too, not only free roam traffic.
 - Big solid scenery (trees, light poles, walls, bridges) stays solid; only breakable objects are made light.
-
-## Using ForzaInfinity?
-
-[ForzaInfinity](https://github.com/anarqz/ForzaInfinity) (online play) is its own ExtraOptions build in `data\bin`, and only one ExtraOptions can run. Apply leaves ForzaInfinity in place and tells you so, and the FH2 Mods `winmm.dll` switches itself off whenever it finds ForzaInfinity (or any other ExtraOptions) in `data\bin`, so the game is never patched twice. With ForzaInfinity installed:
-
-| Works | Off |
-|---|---|
-| Traffic density, crashes, light breakables, money, skills, cockpit camera, world key scripts | **Ghost cars**, **keyboard keys** (lights, indicators, Ctrl world keys) and **sky road**: they need the FH2 Mods ExtraOptions |
-| Car mods, **but** ForzaInfinity then plays **offline**: its server only takes the game's original car database | |
-
-What to do:
-- **To play online with ForzaInfinity:** press **Restore originals** first. Its server checks saves, and money, XP or car mods can get a profile flagged or reset.
-- **To play offline with every feature:** run ForzaInfinity's `Uninstall.cmd`, then press **Apply** in FH2 Mods.
-- Switch back and forth the same way; Restore originals always puts everything back.
 
 ## Apply failed? (troubleshooting)
 
@@ -217,9 +197,8 @@ A file placed at `FH2 Mods\files\<zip name>\<file name>` replaces that file insi
 | `settings.json` | The window's values |
 | `cars.json` | Per-car multipliers |
 | `Diagnose.bat`, `diagnose.ps1` | Read-only check when Apply fails; writes `diagnose.txt` |
-| `ExtraOptions\winmm.dll` | ExtraOptions 0.2.98 with ghost cars, keyboard keys, world keys, sky road and random car added |
+| `ExtraOptions\winmm.dll` | ExtraOptions 0.3.2 with ghost cars, world keys, sky road and random car added |
 | `ExtraOptions\FH2_ExtraOptions.ini` | Its default settings |
-| `ExtraOptions\azimuth-tls.stock.dll` | Azimuth's own TLS helper, put back in `data\bin` in place of an older ExtraOptions |
 | `ExtraOptions\source\` | Its source code (GPL-3) |
 
 ## License

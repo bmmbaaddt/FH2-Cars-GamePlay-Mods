@@ -1,3 +1,4 @@
+#include "addon_wheels.h"
 #include "features.h"
 #include "stock_wheel_assets.h"
 #include "support.h"
@@ -82,7 +83,12 @@ static const char *donor_name(const StockWheelAssets *wheel) {
 const char *stock_wheel_donor_name(const char *name, size_t length) {
     GameString key = {name, 0, length, length < 16 ? 16 : length};
     const StockWheelAssets *wheel = find_wheel(&key);
-    return wheel ? donor_name(wheel) : NULL;
+    return wheel ? donor_name(wheel) : addon_wheels_donor(name, length);
+}
+
+int stock_wheel_has_authored_route(const char *name, size_t length) {
+    GameString key = {name, 0, length, length < 16 ? 16 : length};
+    return find_wheel(&key) != NULL;
 }
 
 static int append_path(char *output, size_t capacity, size_t *length, const char *text,
@@ -140,7 +146,7 @@ static int build_asset_path(char *output, size_t capacity, const StockWheelAsset
 }
 
 static GameString *create_archive_path(GameString *output, const StockWheelAssets *wheel) {
-    char path[STOCK_WHEEL_PATH_CAPACITY];
+    char path[ADDON_WHEEL_PATH_CAPACITY];
     size_t length = 0;
     if (!append_path(path, sizeof(path), &length, "game:\\media\\cars\\", 0) ||
         !append_path(path, sizeof(path), &length, donor_name(wheel), 0)) {
@@ -153,6 +159,14 @@ static GameString *create_archive_path(GameString *output, const StockWheelAsset
 static GameString *stock_archive_text(GameString *output, const char *prefix,
                                       const GameString *name) {
     const StockWheelAssets *wheel = find_wheel(name);
+    StockWheelAssets dynamic;
+    if (!wheel) {
+        const char *donor = addon_wheels_donor(string_data(name), name->length);
+        if (donor) {
+            dynamic = (StockWheelAssets){donor, NULL, 0, 0};
+            wheel = &dynamic;
+        }
+    }
     if (wheel && create_archive_path(output, wheel)) {
         return output;
     }
@@ -162,6 +176,14 @@ static GameString *stock_archive_text(GameString *output, const char *prefix,
 static GameString *stock_archive_string(GameString *output, const GameString *prefix,
                                         const GameString *name) {
     const StockWheelAssets *wheel = find_wheel(name);
+    StockWheelAssets dynamic;
+    if (!wheel) {
+        const char *donor = addon_wheels_donor(string_data(name), name->length);
+        if (donor) {
+            dynamic = (StockWheelAssets){donor, NULL, 0, 0};
+            wheel = &dynamic;
+        }
+    }
     if (wheel && create_archive_path(output, wheel)) {
         return output;
     }
@@ -179,7 +201,10 @@ static unsigned char models_ready(void *part) {
 static unsigned char load_stock_wheels(void *part, const GameString *name) {
     const StockWheelAssets *wheel = find_wheel(name);
     GameString *current = (GameString *)((unsigned char *)part + 0x198);
-    if (!wheel || !compare_strings(current, name)) {
+    const char *addon_models[4], *addon_textures[4];
+    int dynamic =
+        !wheel && addon_wheels_paths(string_data(name), name->length, addon_models, addon_textures);
+    if ((!wheel && !dynamic) || !compare_strings(current, name)) {
         return original_load(part, name);
     }
     void *filesystem = *(void **)(game_image + 0x36614f0);
@@ -189,21 +214,22 @@ static unsigned char load_stock_wheels(void *part, const GameString *name) {
     GameString models[4], textures[4];
     char model_paths[4][STOCK_WHEEL_PATH_CAPACITY];
     char texture_paths[4][STOCK_WHEEL_PATH_CAPACITY];
-    const StockWheelLayout *model_layout = &stock_model_layouts[wheel->model_layout];
-    const StockWheelLayout *texture_layout = &stock_texture_layouts[wheel->texture_layout];
+    const StockWheelLayout *model_layout = wheel ? &stock_model_layouts[wheel->model_layout] : NULL;
+    const StockWheelLayout *texture_layout =
+        wheel ? &stock_texture_layouts[wheel->texture_layout] : NULL;
     int textures_available = 1;
     for (unsigned index = 0; index < ARRAY_COUNT(models); ++index) {
-        if (!build_asset_path(model_paths[index], sizeof(model_paths[index]), wheel,
-                              model_layout->paths[index]) ||
-            !build_asset_path(texture_paths[index], sizeof(texture_paths[index]), wheel,
-                              texture_layout->paths[index])) {
+        if (!dynamic && (!build_asset_path(model_paths[index], sizeof(model_paths[index]), wheel,
+                                           model_layout->paths[index]) ||
+                         !build_asset_path(texture_paths[index], sizeof(texture_paths[index]),
+                                           wheel, texture_layout->paths[index]))) {
             return models_ready(part);
         }
-        models[index] = borrowed_string(model_paths[index]);
+        models[index] = borrowed_string(dynamic ? addon_models[index] : model_paths[index]);
         if (!file_exists(filesystem, &models[index])) {
             return models_ready(part);
         }
-        textures[index] = borrowed_string(texture_paths[index]);
+        textures[index] = borrowed_string(dynamic ? addon_textures[index] : texture_paths[index]);
         if (!file_exists(filesystem, &textures[index])) {
             textures_available = 0;
         }
@@ -230,6 +256,7 @@ __declspec(dllexport) int Fh2TestStockWheelPath(const char *name, unsigned kind,
 
 void stock_wheels_prepare_hooks(unsigned char *image) {
     game_image = image;
+    addon_wheels_bind(image);
     assign_text = (AssignText)(image + 0x22c300);
     concat_strings = (ConcatStrings)(image + 0x211e10);
     concat_text = (ConcatText)(image + 0x2b3750);

@@ -1,6 +1,7 @@
 #include "settings.h"
 #include "features.h"
 #include "support.h"
+#include "features/bindings.h"
 
 #define INI_MAX_SIZE 8192
 #define SETTING(section, key, field, type) {section, key, key, offsetof(ModOptions, field), type}
@@ -9,8 +10,15 @@ const SettingDefinition setting_definitions[] = {
     SETTING("Global", "Enabled", enabled, SETTING_BOOLEAN),
     SETTING("Content", "UnlockDLC", unlock_dlc, SETTING_BOOLEAN),
     SETTING("Content", "OfflineVIP", offline_vip, SETTING_BOOLEAN),
+    SETTING("Experiments", "LocalDrivatarLiveries", local_drivatar_liveries, SETTING_BOOLEAN),
+    SETTING("Experiments", "MaxDrivatarLiveries", max_drivatar_liveries, SETTING_LIVERY_COUNT),
     SETTING("Frontend", "SkipIntro", skip_intro, SETTING_BOOLEAN),
+    SETTING("Frontend", "CarsNextToHome", cars_next_to_home, SETTING_BOOLEAN),
+    SETTING("Frontend", "MenuTurboIntervalMs", menu_turbo_interval_ms, SETTING_TURBO_INTERVAL),
     SETTING("Frontend", "AllRimsCategory", all_rims_category, SETTING_BOOLEAN),
+    SETTING("Experiments", "AllEngineSwaps", all_engine_swaps, SETTING_BOOLEAN),
+    SETTING("Experiments", "AllTransmissionSwaps", all_transmission_swaps, SETTING_BOOLEAN),
+    SETTING("Traffic", "GhostCars", ghost_traffic, SETTING_BOOLEAN),
     SETTING("Frontend", "EnableMarketplace", enable_marketplace, SETTING_BOOLEAN),
     SETTING("Frontend", "EnableSocial", enable_social, SETTING_BOOLEAN),
     SETTING("Frontend", "EnableClubs", enable_clubs, SETTING_BOOLEAN),
@@ -24,15 +32,13 @@ const SettingDefinition setting_definitions[] = {
     SETTING("Profile", "CustomGamerpic", custom_gamerpic, SETTING_BOOLEAN),
     SETTING("PhotoMode", "FreeCamera", free_photo_camera, SETTING_BOOLEAN),
     SETTING("Files", "EnableMediaOverrides", media_overrides, SETTING_BOOLEAN),
+    SETTING("Experiments", "UnlockAeroTuning", unlock_aero_tuning, SETTING_BOOLEAN),
     {"Autodrive", "Enabled", "AutodriveEnabled", offsetof(ModOptions, autodrive), SETTING_BOOLEAN},
-    SETTING("Keyboard", "Headlights", key_headlights, SETTING_KEY),
-    SETTING("Keyboard", "IndicatorLeft", key_indicator_left, SETTING_KEY),
-    SETTING("Keyboard", "IndicatorRight", key_indicator_right, SETTING_KEY),
-    SETTING("Keyboard", "Hazards", key_hazards, SETTING_KEY),
-    SETTING("Traffic", "GhostCars", ghost_traffic, SETTING_BOOLEAN),
 };
 
 static const SettingDefinition legacy_settings[] = {
+    SETTING("Frontend", "AllEngineSwaps", all_engine_swaps, SETTING_BOOLEAN),
+    SETTING("Gameplay", "UnlockAeroTuning", unlock_aero_tuning, SETTING_BOOLEAN),
     SETTING("Livery", "Enable4K", enable_4k_liveries, SETTING_BOOLEAN),
     SETTING("Livery", "IntermediateMSAA", livery_msaa, SETTING_MSAA),
     SETTING("Livery", "ExtraSupersampling", livery_supersampling, SETTING_BOOLEAN),
@@ -78,15 +84,18 @@ void settings_defaults(ModOptions *options) {
         .spawn_at_festival = 0,
         .skip_car_meet_on_startup = 0,
         .all_rims_category = 0,
+        .all_engine_swaps = 0,
+        .all_transmission_swaps = 0,
+        .cars_next_to_home = 1,
+        .local_drivatar_liveries = 1,
+        .max_drivatar_liveries = 6,
+        .menu_turbo_interval_ms = 100,
         .drift_camera = 1,
         .enable_social = 1,
         .enable_clubs = 1,
         .enable_rivals = 1,
         .photo_mode_samples = 0,
-        .key_headlights = 'L',
-        .key_indicator_left = 'Q',
-        .key_indicator_right = 'E',
-        .key_hazards = 'H',
+        .unlock_aero_tuning = 0,
     };
 }
 
@@ -108,8 +117,9 @@ static char *trim_whitespace(char *text) {
 }
 
 static int known_section(const char *name) {
-    if (text_equal_ignore_case(name, "Camera") || text_equal_ignore_case(name, "Graphics") ||
-        text_equal_ignore_case(name, "Livery") || text_equal_ignore_case(name, "HUD") ||
+    if (text_equal_ignore_case(name, "Gameplay") || text_equal_ignore_case(name, "Camera") ||
+        text_equal_ignore_case(name, "Graphics") || text_equal_ignore_case(name, "Livery") ||
+        text_equal_ignore_case(name, "HUD") || text_equal_ignore_case(name, "Bindings") ||
         text_equal_ignore_case(name, "General") || text_equal_ignore_case(name, "Language")) {
         return 1;
     }
@@ -143,28 +153,27 @@ static const SettingDefinition *find_setting(const char *section, const char *ke
 }
 
 static int parse_value(const SettingDefinition *definition, const char *text, int *value) {
-    if (definition->type == SETTING_KEY) {
-        // a letter or digit (its virtual-key code is the same character), F1-F12, or off/0
-        char c = text[0] >= 'a' && text[0] <= 'z' ? (char)(text[0] - 32) : text[0];
-        if (text_equal_ignore_case(text, "off") || text_equal_ignore_case(text, "0")) {
-            *value = 0;
-            return 1;
+    if (definition->type == SETTING_TURBO_INTERVAL) {
+        unsigned interval = 0;
+        if (!*text) return 0;
+        for (; *text; ++text) {
+            if (*text < '0' || *text > '9' || interval > 1000) return 0;
+            interval = interval * 10 + (unsigned)(*text - '0');
         }
-        if (c && !text[1] && ((c >= 'A' && c <= 'Z') || (c >= '1' && c <= '9'))) {
-            *value = c;
-            return 1;
+        if (interval > 1000 || (interval && interval < 20)) return 0;
+        *value = (int)interval;
+        return 1;
+    }
+    if (definition->type == SETTING_LIVERY_COUNT) {
+        unsigned count = 0;
+        if (!*text) return 0;
+        for (; *text; ++text) {
+            if (*text < '0' || *text > '9' || count > 32) return 0;
+            count = count * 10 + (unsigned)(*text - '0');
         }
-        if (c == 'F' && text[1] >= '1' && text[1] <= '9') {
-            int n = text[1] - '0';
-            if (n == 1 && text[2] >= '0' && text[2] <= '2' && !text[3]) {
-                n = 10 + text[2] - '0';
-            } else if (text[2]) {
-                return 0;
-            }
-            *value = VK_F1 + n - 1;
-            return 1;
-        }
-        return 0;
+        if (count > 32) return 0;
+        *value = (int)count;
+        return 1;
     }
     if (definition->type == SETTING_PHOTO_SAMPLES) {
         unsigned samples = 0;
@@ -280,6 +289,12 @@ static int parse_ini(char *text, ModOptions *options) {
             continue;
         }
 
+        if (text_equal_ignore_case(section, "Bindings")) {
+            if (bindings_parse(key, value) != 1) {
+                goto invalid;
+            }
+            continue;
+        }
         const SettingDefinition *definition = find_setting(section, key);
         int parsed;
         if (!definition || !parse_value(definition, value, &parsed)) {
@@ -297,6 +312,7 @@ invalid:
 }
 
 int settings_read(const wchar_t *directory, ModOptions *options) {
+    bindings_reset();
     settings_defaults(options);
     if (!path_join(ini_path, directory, MOD_INI_NAME)) {
         status_set("REFUSED: INI path is too long.");

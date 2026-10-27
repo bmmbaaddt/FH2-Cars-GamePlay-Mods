@@ -3,8 +3,10 @@
 #include "support.h"
 
 enum { MAX_SQL = 65536 };
+
 typedef int (*Prepare)(void *, const char *, int, void **, const char **);
 static unsigned char *image;
+static SRWLOCK cache_lock = SRWLOCK_INIT;
 static unsigned char thunk[12];
 static const unsigned char padding[12] = {0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc,
                                           0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc};
@@ -14,11 +16,13 @@ PatchDefinition wheel_variants_hook_patch = {
     padding,   thunk, thunk, accepted,   ARRAY_COUNT(accepted)};
 
 static const char wheel_rows[] =
-    "(/*FH2_WHEEL_VARIANTS*/SELECT * FROM List_Wheels UNION ALL SELECT " FF_WHEEL_ID_TEXT
-    ", '" FF_WHEEL_MEDIA "', DisplayName, PartManufacturerID, Mass, Price, "
-    "IsStock, Type, Lip, CenterCap, Logo, ActualColor, WheelColor, RGB, BrakeDrawOffset, IconPath "
-    "FROM List_Wheels WHERE ID=91 AND EXISTS (SELECT 1 FROM Data_Car WHERE ID=" FF_CAR_ID_TEXT
-    " AND MediaName='" FF_WHEEL_MEDIA "') AND NOT EXISTS "
+    "(/*FH2_WHEEL_VARIANTS*/SELECT * FROM List_Wheels UNION ALL "
+    "SELECT " FF_WHEEL_ID_TEXT ", '" FF_WHEEL_MEDIA
+    "', DisplayName, PartManufacturerID, Mass, Price, "
+    "IsStock, Type, Lip, CenterCap, Logo, ActualColor, WheelColor, RGB, "
+    "BrakeDrawOffset, IconPath "
+    "FROM List_Wheels WHERE ID=91 AND EXISTS (SELECT 1 FROM Data_Car WHERE "
+    "ID=" FF_CAR_ID_TEXT " AND MediaName='" FF_WHEEL_MEDIA "') AND NOT EXISTS "
     "(SELECT 1 FROM List_Wheels WHERE ID=" FF_WHEEL_ID_TEXT "))";
 
 static int word_char(char ch) {
@@ -64,7 +68,7 @@ static int implicit_alias(const char *sql, size_t size, size_t after) {
     return 0;
 }
 
-static size_t expand_query(const char *sql, size_t size, char *out, size_t capacity) {
+static size_t expand_query(const char *sql, size_t size, char *out, size_t capacity, int indexed) {
     if (!sql || !out || !size || size >= MAX_SQL ||
         text_find(sql, size, "/*FH2_WHEEL_VARIANTS*/")) {
         return 0;
@@ -80,6 +84,7 @@ static size_t expand_query(const char *sql, size_t size, char *out, size_t capac
     }
     size_t read = 0, written = 0;
     int source = 0, changed = 0;
+    int stock_query = indexed && text_find(sql, size, " AS StockCar") != NULL;
     for (size_t i = first; i < size;) {
         char ch = sql[i];
         if (ch == '\'' || ch == '"' || ch == '`' || ch == '[') {
@@ -110,17 +115,24 @@ static size_t expand_query(const char *sql, size_t size, char *out, size_t capac
             while (i < size && word_char(sql[i])) {
                 ++i;
             }
-            if (source && equals(sql + begin, i - begin, "LIST_WHEELS")) {
+            int wheels = equals(sql + begin, i - begin, "LIST_WHEELS");
+            int cars = stock_query && equals(sql + begin, i - begin, "DATA_CAR");
+            if (source && (wheels || cars)) {
                 size_t unchanged = begin - read;
-                const char *alias = implicit_alias(sql, size, i) ? " AS List_Wheels" : "";
-                size_t added = unchanged + sizeof(wheel_rows) - 1 + text_length(alias);
+                const char *replacement = cars      ? "fh2_wheel_cache.Cars"
+                                          : indexed ? "fh2_wheel_cache.Wheels"
+                                                    : wheel_rows;
+                const char *alias =
+                    implicit_alias(sql, size, i) ? cars ? " AS Data_Car" : " AS List_Wheels" : "";
+                size_t replacement_size = text_length(replacement);
+                size_t added = unchanged + replacement_size + text_length(alias);
                 if (added >= capacity - written) {
                     return 0;
                 }
                 memory_copy(out + written, sql + read, unchanged);
                 written += unchanged;
-                memory_copy(out + written, wheel_rows, sizeof(wheel_rows) - 1);
-                written += sizeof(wheel_rows) - 1;
+                memory_copy(out + written, replacement, replacement_size);
+                written += replacement_size;
                 memory_copy(out + written, alias, text_length(alias));
                 written += text_length(alias);
                 read = i;
@@ -152,6 +164,62 @@ static size_t expand_query(const char *sql, size_t size, char *out, size_t capac
     return written;
 }
 
+static int run_sql(void *database, const char *sql) {
+    void *statement = NULL;
+    int result = ((Prepare)(image + 0x3d710))(database, sql, -1, &statement, NULL);
+    if (result || !statement) {
+        return 0;
+    }
+    result = ((int (*)(void *))(image + 0x1eee0))(statement);
+    while (result == 100) {
+        result = ((int (*)(void *))(image + 0x1eee0))(statement);
+    }
+    int finalized = ((int (*)(void *))(image + 0x1ab40))(statement);
+    return result == 101 && !finalized;
+}
+
+static int build_wheel_cache(void *database) {
+    if (run_sql(database, "SELECT ID FROM fh2_wheel_cache.Wheels LIMIT 0")) {
+        return 1;
+    }
+    if (!run_sql(database, "ATTACH DATABASE ':memory:' AS fh2_wheel_cache")) {
+        return 0;
+    }
+    char create[2048];
+    const char prefix[] = "CREATE TABLE fh2_wheel_cache.Wheels AS ";
+    memory_copy(create, prefix, sizeof(prefix) - 1);
+    memory_copy(create + sizeof(prefix) - 1, wheel_rows + 1, sizeof(wheel_rows) - 3);
+    create[sizeof(prefix) + sizeof(wheel_rows) - 4] = 0;
+    if (!run_sql(database, "SAVEPOINT fh2_wheel_build")) {
+        run_sql(database, "DETACH DATABASE fh2_wheel_cache");
+        return 0;
+    }
+    int complete =
+        run_sql(database, create) &&
+        run_sql(database, "CREATE UNIQUE INDEX fh2_wheel_cache.Wheel_ID ON Wheels(ID)") &&
+        run_sql(database, "CREATE INDEX fh2_wheel_cache.Wheel_Media ON "
+                          "Wheels(MediaName COLLATE NOCASE)") &&
+        run_sql(database, "CREATE TABLE fh2_wheel_cache.Cars AS SELECT * FROM Data_Car") &&
+        run_sql(database, "CREATE UNIQUE INDEX fh2_wheel_cache.Car_ID ON Cars(ID)") &&
+        run_sql(database, "CREATE INDEX fh2_wheel_cache.Car_Wheel ON "
+                          "Cars(StockWheelID,MediaName COLLATE NOCASE,ID)");
+    if (!complete) {
+        run_sql(database, "ROLLBACK TO fh2_wheel_build");
+    }
+    int released = run_sql(database, "RELEASE fh2_wheel_build");
+    if (!complete || !released) {
+        run_sql(database, "DETACH DATABASE fh2_wheel_cache");
+    }
+    return complete && released;
+}
+
+static int indexed_wheels(void *database) {
+    AcquireSRWLockExclusive(&cache_lock);
+    int ready = build_wheel_cache(database);
+    ReleaseSRWLockExclusive(&cache_lock);
+    return ready;
+}
+
 static int prepare_wheel_query(void *database, const char *sql, int bytes, void **statement,
                                const char **tail) {
     Prepare original = (Prepare)(image + 0x3d710);
@@ -162,11 +230,13 @@ static int prepare_wheel_query(void *database, const char *sql, int bytes, void 
         }
     }
     if (!size || size >= MAX_SQL || !text_find(sql, size, "List_Wheels") ||
+        text_find(sql, size, "AND WheelCategories.IsStock = 0 JOIN UpgradeTypes") ||
         text_find(sql, size, "/*FH2_WHEEL_VARIANTS*/")) {
         return original(database, sql, bytes, statement, tail);
     }
     char *expanded = HeapAlloc(GetProcessHeap(), 0, MAX_SQL);
-    size_t count = expanded ? expand_query(sql, size, expanded, MAX_SQL) : 0;
+    int indexed = expanded && indexed_wheels(database);
+    size_t count = expanded ? expand_query(sql, size, expanded, MAX_SQL, indexed) : 0;
     if (!count) {
         if (expanded) {
             HeapFree(GetProcessHeap(), 0, expanded);
@@ -193,6 +263,6 @@ void wheel_variants_prepare_hook(unsigned char *game_image) {
 #ifdef FH2_TWEAKS_TEST
 __declspec(dllexport) size_t Fh2TestWheelVariants(const char *sql, size_t size, char *output,
                                                   size_t capacity) {
-    return expand_query(sql, size, output, capacity);
+    return expand_query(sql, size, output, capacity, 0);
 }
 #endif

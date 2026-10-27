@@ -54,7 +54,8 @@ static int make_query(char text[768], int part_id, int rear, int matching) {
     size_t length = 0;
     if (!append(text, &length, "SELECT Race.* FROM ") || !append(text, &length, table) ||
         !append(text, &length,
-                " Race JOIN List_AeroPhysics A ON A.AeroPhysicsID=Race.AeroPhysicsID ")) {
+                " Race JOIN List_AeroPhysics A ON "
+                "A.AeroPhysicsID=Race.AeroPhysicsID ")) {
         return 0;
     }
     if (matching) {
@@ -82,9 +83,9 @@ static int make_query(char text[768], int part_id, int rear, int matching) {
     } else if (!append(text, &length, "WHERE ")) {
         return 0;
     }
-    return append(
-        text, &length,
-        "Race.Level=3 AND A.Downforce1>A.Downforce0 ORDER BY Race.Sequence,Race.Id LIMIT 1");
+    return append(text, &length,
+                  "Race.Level=3 AND A.Downforce1>A.Downforce0 ORDER BY "
+                  "Race.Sequence,Race.Id LIMIT 1");
 }
 
 static void *race_part(void *database, int id, int rear) {
@@ -137,16 +138,11 @@ static void load_aero(AeroDefinition *output, void **part, void **database, int 
             float span = race.downforce_max - race.downforce_min;
             if (race.available && float_is_finite(span) && span > 0.0f &&
                 float_is_finite(race.drag_min) && float_is_finite(race.drag_max)) {
-                float maximum = output->downforce_min + span;
-                if (race.downforce_max > maximum) {
-                    maximum = race.downforce_max;
-                }
-                float drag_span = race.drag_max - race.drag_min;
-                output->default_position = 0.0f;
-                output->downforce_max = maximum;
-                if (drag_span > 0.0f) {
-                    output->drag_max = output->drag_min + drag_span;
-                }
+                output->default_position = race.default_position;
+                output->downforce_min = race.downforce_min;
+                output->downforce_max = race.downforce_max;
+                output->drag_min = race.drag_min;
+                output->drag_max = race.drag_max;
             }
         }
     }

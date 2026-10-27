@@ -299,7 +299,7 @@ static void update_mounted_camera(void *camera, float dt, unsigned char reset) {
     CameraView view = camera_type(camera);
     _Alignas(16) float forward[4], velocity[4], axis[4];
     void *target;
-    if (view < CAMERA_DRIVER || view > CAMERA_BUMPER) {
+    if (view != CAMERA_DRIVER) {
         return;
     }
     DriftOffset *state = &mounted_offsets[view - CAMERA_DRIVER];

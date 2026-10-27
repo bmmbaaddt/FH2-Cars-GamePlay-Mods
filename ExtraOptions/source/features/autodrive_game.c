@@ -2,6 +2,7 @@
 #include "game_addresses.h"
 #include "logging.h"
 #include "support.h"
+#include "bindings.h"
 
 static unsigned char *image;
 typedef void *(*SharedGetter)(void *, GameShared *);
@@ -15,7 +16,9 @@ typedef int *(*GroupGetter)(void *);
 typedef void *(*CameraGetter)(void *);
 typedef void (*ViewFlash)(void *, int, float);
 
-static void *game_function(unsigned rva) { return image + rva; }
+static void *game_function(unsigned rva) {
+    return image + rva;
+}
 
 static uintptr_t method(void *object, unsigned slot) {
     void *vtable;
@@ -44,7 +47,9 @@ void autodrive_game_release_shared(GameShared *value) {
     *value = (GameShared){0};
 }
 
-void autodrive_game_bind(unsigned char *base) { image = base; }
+void autodrive_game_bind(unsigned char *base) {
+    image = base;
+}
 
 static int controller_status(int status) {
     static int previous = -2;
@@ -79,7 +84,7 @@ int autodrive_game_buttons(void **controller, unsigned short *buttons) {
 int autodrive_game_dpad_down(void **controller) {
     unsigned short buttons;
     int status = controller_status(autodrive_game_buttons(controller, &buttons));
-    return status < 0 ? status : (buttons & 2) != 0;
+    return status < 0 ? status : binding_pad_down(BIND_AUTODRIVE, buttons);
 }
 
 int autodrive_game_driving_input(void *controller) {
@@ -102,18 +107,22 @@ static int simulation_is_running(void) {
            memory_read((unsigned char *)simulation + 0x28, &paused, 1) && !paused;
 }
 
-int autodrive_game_is_freeroam(void) {
+int autodrive_game_event_context(void) {
     void *hud_manager, *services;
-    if (!simulation_is_running() || !memory_read_pointer(image + 0x34c0f40, &hud_manager) ||
+    if (!memory_read_pointer(image + 0x34c0f40, &hud_manager) ||
         !memory_read_pointer((unsigned char *)hud_manager + 8, &services)) {
-        return 0;
+        return -1;
     }
     GameShared context = {0};
     ((SharedGetter)game_function(0x2129a0))(hud_manager, &context);
     int event_context = -1;
     memory_read((unsigned char *)context.object + 0x60, &event_context, 4);
     autodrive_game_release_shared(&context);
-    return event_context == 2;
+    return event_context;
+}
+
+int autodrive_game_is_freeroam(void) {
+    return simulation_is_running() && autodrive_game_event_context() == 2;
 }
 
 int autodrive_game_has_gameplay_input(void *controller) {
@@ -144,6 +153,46 @@ int autodrive_game_can_start(void *controller) {
     return autodrive_game_is_freeroam() && autodrive_game_has_gameplay_input(controller);
 }
 
+int autodrive_game_can_drive(void *controller) {
+    if (!autodrive_game_has_gameplay_input(controller)) {
+        return 0;
+    }
+    switch (autodrive_game_presentation_mode()) {
+        case 3:
+        case 4:
+        case 6:
+        case 9:
+        case 12:
+            return 1;
+        default:
+            return 0;
+    }
+}
+
+void *autodrive_game_event_route(void *car) {
+    void *bindings, *property, *route;
+    unsigned char valid;
+    // CarRouteTrackingComponent's Event (3) binding. Read the route property;
+    // the game owns its tracker, checkpoints, laps and lifetime throughout.
+    if (!has_vtable(car, GAME_RVA_PLAYER_CAR_VTABLE) ||
+        !memory_read_pointer((unsigned char *)car + 0x4f70, &bindings) ||
+        !has_vtable(bindings, 0x2f5d850)) {
+        return NULL;
+    }
+    // Event first. Road trips can instead use GroupSatNav or PersonalSatNav.
+    // Personal (the free-roam random route) is deliberately never a candidate.
+    static const unsigned offsets[] = {0x10, 0x88, 0x60};
+    unsigned count = autodrive_game_is_freeroam() ? 1 : ARRAY_COUNT(offsets);
+    for (unsigned i = 0; i < count; ++i) {
+        if (memory_read_pointer((unsigned char *)bindings + offsets[i], &property) &&
+            memory_read_pointer(property, &route) &&
+            memory_read((unsigned char *)route + 8, &valid, 1) && valid == 1) {
+            return route;
+        }
+    }
+    return NULL;
+}
+
 int autodrive_game_presentation_mode(void) {
     void *services, *manager, *head;
     if (!memory_read_pointer(image + 0x354f4f8, &services) ||
@@ -159,7 +208,9 @@ int autodrive_game_presentation_mode(void) {
     return mode;
 }
 
-int autodrive_game_is_carmeet(void) { return autodrive_game_presentation_mode() == 11; }
+int autodrive_game_is_carmeet(void) {
+    return autodrive_game_presentation_mode() == 11;
+}
 
 void *autodrive_game_get_car(void) {
     void *game, *car = 0;

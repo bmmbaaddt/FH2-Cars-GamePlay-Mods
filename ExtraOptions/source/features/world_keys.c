@@ -67,8 +67,8 @@ void world_keys_prepare_hook(unsigned char *image) {
 }
 
 void world_keys_tick(int focused) {
-    int ctrl = focused && game_input_key_down(VK_CONTROL);
-    int sky_key = ctrl && game_input_key_down('F');
+    int ctrl = focused && game_key_down(VK_CONTROL);
+    int sky_key = ctrl && game_key_down('F');
     if (sky_key && !sky_key_down) {
         if (sky_road_active()) {  // coming down: the snap-to-road script puts the car back on a road
             pending_since = GetTickCount64();
@@ -78,7 +78,7 @@ void world_keys_tick(int focused) {
     }
     sky_key_down = sky_key;
     for (unsigned i = 0; i < ARRAY_COUNT(bindings); ++i) {
-        int down = ctrl && game_input_key_down(bindings[i].key);
+        int down = ctrl && game_key_down(bindings[i].key);
         if (down && !keys_down[i]) {
             pending_since = GetTickCount64();
             pending_flow = bindings[i].flow;

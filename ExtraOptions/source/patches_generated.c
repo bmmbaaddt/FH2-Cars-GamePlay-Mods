@@ -169,9 +169,18 @@ static const unsigned char *const aero_front_tuning_unlocked_accepted[] = {aero_
 static const unsigned char aero_rear_tuning_unlocked_bytes_0[] = {0xe8, 0xf4, 0xce, 0x4a, 0xff};
 static const unsigned char aero_rear_tuning_unlocked_bytes_1[] = {0xb0, 0x01, 0x90, 0x90, 0x90};
 static const unsigned char *const aero_rear_tuning_unlocked_accepted[] = {aero_rear_tuning_unlocked_bytes_0, aero_rear_tuning_unlocked_bytes_1};
+static const unsigned char factory_rim_size_category_lock_bytes_0[] = {0xe8, 0x6b, 0xe9, 0xff, 0xff};
+static const unsigned char factory_rim_size_category_lock_bytes_1[] = {0x31, 0xc0, 0x90, 0x90, 0x90};
+static const unsigned char *const factory_rim_size_category_lock_accepted[] = {factory_rim_size_category_lock_bytes_0, factory_rim_size_category_lock_bytes_1};
 static const unsigned char stock_rim_localized_name_call_bytes_0[] = {0xe8, 0x6d, 0xb7, 0x01, 0x00};
 static const unsigned char stock_rim_localized_name_call_bytes_1[] = {0xe8, 0x51, 0x3c, 0xff, 0xff};
 static const unsigned char *const stock_rim_localized_name_call_accepted[] = {stock_rim_localized_name_call_bytes_0, stock_rim_localized_name_call_bytes_1};
+static const unsigned char factory_rim_size_category_select_bytes_0[] = {0xe8, 0x56, 0x58, 0xff, 0xff};
+static const unsigned char factory_rim_size_category_select_bytes_1[] = {0x31, 0xc0, 0x90, 0x90, 0x90};
+static const unsigned char *const factory_rim_size_category_select_accepted[] = {factory_rim_size_category_select_bytes_0, factory_rim_size_category_select_bytes_1};
+static const unsigned char factory_rim_size_part_lock_bytes_0[] = {0xe8, 0x63, 0x54, 0xff, 0xff};
+static const unsigned char factory_rim_size_part_lock_bytes_1[] = {0x31, 0xc0, 0x90, 0x90, 0x90};
+static const unsigned char *const factory_rim_size_part_lock_accepted[] = {factory_rim_size_part_lock_bytes_0, factory_rim_size_part_lock_bytes_1};
 static const unsigned char all_rims_categories_query_bytes_0[] = {0xe8, 0xcc, 0xdc, 0x53, 0x00, 0x90};
 static const unsigned char all_rims_categories_query_bytes_1[] = {0xff, 0x15, 0xb3, 0x0e, 0x00, 0x00};
 static const unsigned char *const all_rims_categories_query_accepted[] = {all_rims_categories_query_bytes_0, all_rims_categories_query_bytes_1};
@@ -322,7 +331,10 @@ const PatchDefinition fixed_patches[FIXED_PATCH_COUNT] = {
     {0xddbcd8, 0xddb2d8, 6, GROUP_CLUBS, "clubs_group_enabled_ddbcd8", clubs_group_enabled_ddbcd8_bytes_0, clubs_group_enabled_ddbcd8_bytes_1, clubs_group_enabled_ddbcd8_bytes_1, clubs_group_enabled_ddbcd8_accepted, 2},
     {0xe9ab3b, 0xe9a13b, 5, GROUP_AERO_TUNING, "aero_front_tuning_unlocked", aero_front_tuning_unlocked_bytes_0, aero_front_tuning_unlocked_bytes_1, aero_front_tuning_unlocked_bytes_1, aero_front_tuning_unlocked_accepted, 2},
     {0xe9aba7, 0xe9a1a7, 5, GROUP_AERO_TUNING, "aero_rear_tuning_unlocked", aero_rear_tuning_unlocked_bytes_0, aero_rear_tuning_unlocked_bytes_1, aero_rear_tuning_unlocked_bytes_1, aero_rear_tuning_unlocked_accepted, 2},
+    {0xeb6a30, 0xeb6030, 5, GROUP_RIMS, "factory_rim_size_category_lock", factory_rim_size_category_lock_bytes_0, factory_rim_size_category_lock_bytes_1, factory_rim_size_category_lock_bytes_1, factory_rim_size_category_lock_accepted, 2},
     {0xebc61e, 0xebbc1e, 5, GROUP_RIMS, "stock_rim_localized_name_call", stock_rim_localized_name_call_bytes_0, stock_rim_localized_name_call_bytes_1, stock_rim_localized_name_call_bytes_1, stock_rim_localized_name_call_accepted, 2},
+    {0xebfb45, 0xebf145, 5, GROUP_RIMS, "factory_rim_size_category_select", factory_rim_size_category_select_bytes_0, factory_rim_size_category_select_bytes_1, factory_rim_size_category_select_bytes_1, factory_rim_size_category_select_accepted, 2},
+    {0xebff38, 0xebf538, 5, GROUP_RIMS, "factory_rim_size_part_lock", factory_rim_size_part_lock_bytes_0, factory_rim_size_part_lock_bytes_1, factory_rim_size_part_lock_bytes_1, factory_rim_size_part_lock_accepted, 2},
     {0xece71f, 0xecdd1f, 6, GROUP_RIMS, "all_rims_categories_query", all_rims_categories_query_bytes_0, all_rims_categories_query_bytes_1, all_rims_categories_query_bytes_1, all_rims_categories_query_accepted, 2},
     {0xecf307, 0xece907, 6, GROUP_RIMS, "all_rims_items_query", all_rims_items_query_bytes_0, all_rims_items_query_bytes_1, all_rims_items_query_bytes_1, all_rims_items_query_accepted, 2},
     {0xfd054c, 0xfcfb4c, 5, GROUP_RIMS, "stock_wheel_archive_preload", stock_wheel_archive_preload_bytes_0, stock_wheel_archive_preload_bytes_1, stock_wheel_archive_preload_bytes_1, stock_wheel_archive_preload_accepted, 2},
