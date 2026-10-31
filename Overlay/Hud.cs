@@ -1,5 +1,5 @@
-// The on-screen gauges: two small click-through, see-through windows over the game's picture (per-pixel alpha, so
-// edges stay smooth): the cluster (speed, rev bar, nitrous, readouts) and the status and timer card. In move mode (from the
+// The on-screen gauges: three small click-through, see-through windows over the game's picture (per-pixel alpha, so
+// edges stay smooth): the cluster (speed, rev bar, nitrous, readouts), the status and timer card, and the gas / brake graph. In move mode (from the
 // menu) they take the mouse: drag one to move it, scroll on it to resize everything.
 using System;
 using System.Collections.Generic;
@@ -80,7 +80,8 @@ namespace FH2Overlay
         readonly Settings s;
         readonly Func<Driving> driving;
         readonly Runs runs;
-        readonly Layer speedo = new Layer(), card = new Layer();
+        readonly Layer speedo = new Layer(), card = new Layer(), pedals = new Layer();
+        readonly float[] gas = new float[150], brake = new float[150]; int sample;   // 5 s at the 30 frames a second below
         public Func<IntPtr> GameWindow = () => IntPtr.Zero;
         public Func<bool> MenuOpen = () => false;
         public bool Moving { get; private set; }
@@ -98,18 +99,19 @@ namespace FH2Overlay
             this.s = s; this.driving = driving; this.runs = runs;
             speedo.Dragged = (x, y) => { s.SpeedoX = x - origin.X; s.SpeedoY = y - origin.Y; };
             card.Dragged = (x, y) => { s.CardX = x - origin.X; s.CardY = y - origin.Y; };
-            speedo.Scrolled = card.Scrolled = d => s.HudScale = V.Clamp(s.HudScale + d * 0.1f, 0.5f, 3);
+            pedals.Dragged = (x, y) => { s.PedalsX = x - origin.X; s.PedalsY = y - origin.Y; };
+            speedo.Scrolled = card.Scrolled = pedals.Scrolled = d => s.HudScale = V.Clamp(s.HudScale + d * 0.1f, 0.5f, 3);
             var t = new Timer { Interval = 33 }; t.Tick += (o, e) => Frame(); t.Start();
         }
 
-        public void SetMoving(bool on) { Moving = on; speedo.SetMoving(on); card.SetMoving(on); if (!on) s.Save(); }
+        public void SetMoving(bool on) { Moving = on; speedo.SetMoving(on); card.SetMoving(on); pedals.SetMoving(on); if (!on) s.Save(); }
 
         void Frame()
         {
             var game = GameWindow();
             bool show = game != IntPtr.Zero && !IsIconic(game) && (GetForegroundWindow() == game || MenuOpen() || Moving)
                         && GetClientRect(game, out RECT r) && r.R >= 200 && r.B >= 150;
-            if (!show) { speedo.Hide(); card.Hide(); return; }
+            if (!show) { speedo.Hide(); card.Hide(); pedals.Hide(); return; }
             GetClientRect(game, out RECT c);
             var at = new PT(); ClientToScreen(game, ref at); origin = new Point(at.X, at.Y);
             int w = c.R, h = c.B;
@@ -123,6 +125,14 @@ namespace FH2Overlay
             sx = Math.Max(0, Math.Min(w - cw, sx)); sy = Math.Max(0, Math.Min(h - ch, sy));
             if (showCluster) speedo.Render(origin.X + sx, origin.Y + sy, cw, ch, g => Cluster(g, d, cw, ch, k));
             else speedo.Hide();
+
+            // the gas / brake graph: bottom left unless moved
+            gas[sample] = d?.Throttle ?? 0; brake[sample] = d?.Brake ?? 0; sample = (sample + 1) % gas.Length;
+            int pw = (int)(300 * k), ph = (int)(96 * k);
+            int px = s.PedalsX >= 0 ? s.PedalsX : (int)(30 * k), py = s.PedalsY >= 0 ? s.PedalsY : h - ph - (int)(28 * k);
+            px = Math.Max(0, Math.Min(w - pw, px)); py = Math.Max(0, Math.Min(h - ph, py));
+            if (s.ShowPedals && (Moving || d != null && d.InCar)) pedals.Render(origin.X + px, origin.Y + py, pw, ph, g => Pedals(g, pw, ph, k));
+            else pedals.Hide();
 
             // the card: top right unless moved
             List<(string text, Color color, float size)> lines;
@@ -237,6 +247,30 @@ namespace FH2Overlay
                     string dir = "N NE E SE S SW W NW".Split(' ')[(int)((d.Heading + 22.5f) % 360 / 45)];
                     string text = $"{dir} {d.Heading:000}\u00b0    G {d.GLong:+0.0;-0.0} / {Math.Abs(d.GLat):0.0}    drift {d.DriftAngle:0}\u00b0  best {d.DriftBest:#,0}    {Units.Distance(d.TripMetres, s.Kmh)}    top {Units.Speed(d.TopMs, s.Kmh)}";
                     g.DrawString(text, f, b, new RectangleF(12 * k, y, w - 20 * k, 20 * k), new StringFormat { Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap });
+                }
+        }
+
+        static readonly Color Gas = Color.FromArgb(255, 40, 230, 120), Stop = Color.FromArgb(255, 255, 70, 60);
+        // the trace scrolls right to left, newest at the right edge; a bar and a percentage for each pedal beside it
+        void Pedals(Graphics g, int w, int h, float k)
+        {
+            using (var p = Round(new Rectangle(0, 0, w - 1, h - 1), 6 * k)) using (var b = new SolidBrush(Panel)) g.FillPath(b, p);
+            var plot = new RectangleF(10 * k, 10 * k, w - 92 * k, h - 20 * k);
+            using (var grid = new Pen(Off, 1)) { g.DrawRectangle(grid, plot.X, plot.Y, plot.Width, plot.Height); g.DrawLine(grid, plot.X, plot.Y + plot.Height / 2, plot.Right, plot.Y + plot.Height / 2); }
+            int n = gas.Length;
+            foreach (var (values, color) in new[] { (brake, Stop), (gas, Gas) })
+            {
+                var pts = new PointF[n];
+                for (int i = 0; i < n; i++) pts[i] = new PointF(plot.X + plot.Width * i / (n - 1), plot.Bottom - plot.Height * values[(sample + i) % n]);
+                using (var pen = new Pen(color, 2 * k) { LineJoin = LineJoin.Round }) g.DrawLines(pen, pts);
+            }
+            float last(float[] v) => v[(sample + n - 1) % n];
+            using (var f = new Font("Bahnschrift SemiBold", 11 * k, GraphicsUnit.Pixel))
+                foreach (var (i, v, color) in new[] { (0, last(gas), Gas), (1, last(brake), Stop) })
+                {
+                    float bx = plot.Right + 12 * k + i * 36 * k, bw = 14 * k, bh = plot.Height - 14 * k;
+                    using (var off = new SolidBrush(Off)) g.FillRectangle(off, bx, plot.Y, bw, bh);
+                    using (var b = new SolidBrush(color)) { g.FillRectangle(b, bx, plot.Y + bh * (1 - v), bw, bh * v); g.DrawString($"{v * 100:0}", f, b, bx - 4 * k, plot.Y + bh + 1 * k); }
                 }
         }
 

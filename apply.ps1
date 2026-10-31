@@ -36,8 +36,9 @@ $rest = { param($f) @([IO.File]::ReadAllLines($f) | Where-Object { $_ -match '<Z
 if (@(Compare-Object (& $rest (Join-Path $backup 'zipmanifest.xml')) (& $rest $manifestFile)).Count -gt 50) {
   throw "backup_original next to azimuth.exe was made from another game, not this FH2. If an older FH2 Mods changed FH2 Presents Fast & Furious, press Restore originals in that older version first. Then delete the backup_original folder and Apply again"
 }
-# ExtraOptions 0.3.2 with this tool's additions (ghost cars, world keys, random car, sky road) is a winmm.dll
-# next to azimuth.exe with its ini beside it. It runs on Azimuth 1.0.1 and 1.0.2 only.
+# ExtraOptions 0.4.4 with this tool's additions (ghost cars, world keys, random car, sky road) is a winmm.dll
+# next to azimuth.exe with its ini beside it, plus its plugin mods (garage revving, weather control) in mods\.
+# It runs on Azimuth 1.0.1 to 1.0.4 only.
 $eoDll      = Join-Path $PSScriptRoot 'ExtraOptions\winmm.dll'
 $winmm      = Join-Path $root 'winmm.dll'
 $eoIni      = Join-Path $root 'FH2_ExtraOptions.ini'
@@ -76,10 +77,11 @@ if ($Restore) {
   }
   'restored original files'; return
 }
-# Azimuth 1.0.1 and 1.0.2, the builds ExtraOptions 0.3.2 checks for
-$azimuth10 = (Get-FileHash (Join-Path $root 'azimuth.exe')).Hash -in '6E9A2290971500A133699999B3024EEC7BE93CF5D4116D18D54B8372D11172F7', '42527964F48C90A537F2414200B8598AB9A6F92919BFBE046DBECCCB36E7C597'
+# Azimuth 1.0.1 to 1.0.4, the builds ExtraOptions 0.4.4 checks for
+$azimuth10 = (Get-FileHash (Join-Path $root 'azimuth.exe')).Hash -in '6E9A2290971500A133699999B3024EEC7BE93CF5D4116D18D54B8372D11172F7', '42527964F48C90A537F2414200B8598AB9A6F92919BFBE046DBECCCB36E7C597',
+  'EBFD5D43A165DCEC5D4007B9D41ED5B2ED122FCD02ECFEF7E4ED35B40826821F', '56D2C9CB6CCF3AE1836DEE9676B64285F3A247EFA2D12CF02C6C742696B3B092'
 $eoActive = $false
-if (-not $azimuth10) { '  ExtraOptions skipped: it needs Azimuth 1.0.2 (itch.io). Ghost cars, keyboard keys, world keys and sky road are off; everything else works.' }
+if (-not $azimuth10) { '  ExtraOptions skipped: it needs Azimuth 1.0.4 (itch.io). Ghost cars, keyboard keys, world keys and sky road are off; everything else works.' }
 elseif ((Test-Path $winmm) -and -not (FileHas $winmm 'FH2_ExtraOptions')) { '  ExtraOptions skipped: another mod already uses winmm.dll next to azimuth.exe. Ghost cars, keyboard keys, world keys and sky road are off.' }
 else {
   New-Item -ItemType Directory -Force $eoBackups | Out-Null
@@ -88,6 +90,14 @@ else {
     Copy-Item -Force $eoDll $winmm
     '  ExtraOptions: installed the FH2 Mods build (winmm.dll)'
   }
+  # its plugin mods: a settings file the player already has is kept
+  $eoMods = Join-Path $PSScriptRoot 'ExtraOptions\mods'
+  foreach ($f in Get-ChildItem $eoMods -Recurse -File) {
+    $to = Join-Path $root ('mods' + $f.FullName.Substring($eoMods.Length))
+    if ($f.Extension -eq '.ini' -and (Test-Path $to)) { continue }
+    if (-not (SameFile $f.FullName $to)) { New-Item -ItemType Directory -Force (Split-Path $to) | Out-Null; Copy-Item -Force $f.FullName $to; $eoPlugins = $true }
+  }
+  if ($eoPlugins) { '  ExtraOptions: plugin mods installed (garage revving, weather control)' }
   $gamerpic = Join-Path $root 'data\bin\Gamerpic.png'
   if (-not (Test-Path (Join-Path $root 'Gamerpic.png')) -and (Test-Path $gamerpic)) { Copy-Item $gamerpic $root }
   $eoActive = $true

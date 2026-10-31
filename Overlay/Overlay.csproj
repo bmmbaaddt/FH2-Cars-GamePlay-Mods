@@ -6,7 +6,7 @@
     <LangVersion>latest</LangVersion>
     <AssemblyName>FH2 Mods Overlay</AssemblyName>
     <RootNamespace>FH2Overlay</RootNamespace>
-    <Version>1.2.0</Version>
+    <Version>1.4.0</Version>
     <Product>FH2 Mods Overlay</Product>
     <PlatformTarget>x64</PlatformTarget>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>

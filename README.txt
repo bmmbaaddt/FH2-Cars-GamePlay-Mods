@@ -5,8 +5,9 @@ Change traffic, crashes, money, skills, the cockpit camera and per-car
 performance (power, drag, downforce, grip, brakes, turbo) from one window,
 and get keyboard keys for lights, indicators, time and weather.
 
-New in 1.3: needs Azimuth 1.0.2 (1.0.1 works too) and comes with
-ExtraOptions 0.3.2 (see REQUIREMENTS).
+New in 1.4: needs Azimuth 1.0.4 (1.0.1 to 1.0.3 work too) and comes with
+ExtraOptions 0.4.4 (see REQUIREMENTS). The overlay gets a steering lock
+setting and a gas / brake graph.
 
 New in 1.1.0: an in-game overlay (press Insert while driving) with boost,
 nitrous, launch control, drift, stunts, UFO mode, teleport, cruise control,
@@ -37,19 +38,23 @@ use "Restore originals" before asking them for help.
 REQUIREMENTS
 ------------
 - Windows 10 or 11 (PowerShell 5.1, already part of Windows)
-- Forza Horizon 2 for Xbox One (1.0.0.64) running on Azimuth 1.0.2
-  (1.0.1 works too). On an older Azimuth everything works except ghost
+- Forza Horizon 2 for Xbox One (1.0.0.64) running on Azimuth 1.0.4
+  (1.0.1 to 1.0.3 work too). On an older Azimuth everything works except ghost
   cars, ExtraOptions' keys, world keys and sky road: update Azimuth from
   almost-there-games.itch.io/azimuth (your saves carry over).
 - Python 3 on PATH, for the car list and car mods
   (python.org, tick "Add python.exe to PATH" when installing)
-- ExtraOptions is included: Apply installs ExtraOptions 0.3.2 with this
+- ExtraOptions is included: Apply installs ExtraOptions 0.4.4 with this
   tool's additions (ghost cars, world keys, random car, sky road) as
   winmm.dll next to azimuth.exe (its settings are in FH2_ExtraOptions.ini
-  beside it). "Restore originals" puts back the one you had. You also get
-  everything new in 0.3: its mods folder loader, Jump to Manufacturer, all
-  online races offline, custom showcases, F1 to hide the HUD, photo mode
-  from the garage, more audio and HUD options, and every key set in the ini.
+  beside it), and its plugin mods (garage revving, time and weather
+  control) in the mods folder. "Restore originals" puts back the one you
+  had. You also get everything new in 0.3 and 0.4: its mods folder loader,
+  Jump to Manufacturer, all online races offline, custom showcases, F1 to
+  hide the HUD, photo mode from the garage, more audio and HUD options,
+  every key set in the ini, time and weather in the pause menu (Y), a time
+  slider in photo mode, daytime headlights, a vignette toggle and garage
+  revving in the outposts too.
 
 
 INSTALL
@@ -245,6 +250,12 @@ settings and the run timers (0-60 to 0-200 mph and 1/8 to 1 mile, or
 0-100 to 0-400 km/h and 100 to 2000 m). Stunts and the rocket need the car
 moving. Single-player only: not in online sessions with other players.
 
+Steering lock (Driving tab, Handling): how far the front wheels turn,
+20-90 degrees (most cars: 42 stock). It still narrows at speed by the same
+share. No key by default; set one on the Keys tab.
+Gas / brake graph (Gauges tab, off by default): the last 5 seconds of
+throttle (green) and brake (red) with live bars, like Assetto Corsa.
+
 
 GAME MODES (overlay, new in 1.2)
 --------------------------------
@@ -282,8 +293,10 @@ FH2 Mods Overlay.exe          the in-game overlay (settings, keys, spots and
 settings.json                 the window's values
 cars.json                     per-car multipliers
 Diagnose.bat, diagnose.ps1    read-only check when Apply fails
-ExtraOptions\winmm.dll        ExtraOptions 0.3.2 with ghost cars, world
+ExtraOptions\winmm.dll        ExtraOptions 0.4.4 with ghost cars, world
                               keys, sky road and random car added
+ExtraOptions\mods\            its plugin mods (garage revving, time and
+                              weather control), copied to the mods folder
 ExtraOptions\FH2_ExtraOptions.ini   its default settings
 ExtraOptions\source\          its source code
 

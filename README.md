@@ -2,7 +2,7 @@
 
 A settings window for **Forza Horizon 2 (Xbox One)** running on **Azimuth**. Change traffic, crashes, money, skills, the cockpit camera and per-car performance from one window, and get keyboard keys for lights, indicators, time and weather. No file editing: just change values and press Apply.
 
-**1.3 needs Azimuth 1.0.2** and comes with ExtraOptions 0.3.2 (see [Requirements](#requirements)).
+**1.4 needs Azimuth 1.0.4** (1.0.1 to 1.0.3 work too) and comes with ExtraOptions 0.4.4 (see [Requirements](#requirements)). The overlay gets a **steering lock** setting and a **gas / brake graph**.
 
 Since 1.1.0 there is also an **in-game overlay** (press `Insert` while driving): boost, nitrous, launch control, drift, stunts, UFO mode, teleport, cruise control, run timers, a drag light tree and on-screen gauges. Since 1.2 it has **game modes** too: speed bomb, score attack and pursuit (see [Game modes](#game-modes)).
 
@@ -33,7 +33,7 @@ Use both at the same time: set your car mods and packs in the window, press **Ap
 | Cockpit camera | Field of view and seat position |
 | Car mods | Pick any car (the traffic bus and box truck too) and set power, air drag, downforce, tire grip, brakes, turbo boost, gearing and rev limit (x1 = stock, up to x100; rev limit up to x2, the game crashes above that), and the number of forward gears (up to 8) |
 | Packs | For every car at once: **Race+ engine parts** (an extra level of every engine part with the extra torque you choose), **engine swaps** (every engine fits every car), **traffic and AI cars for sale** in the Autoshow, **free cars** (1 CR each). A pack your garage uses can only be switched off after fitting the stock part |
-| Overlay | In game: boost, nitrous, pops and bangs, anti-lag, burnout, standing / rolling / wheelie launch, drift, more grip, super brakes, speed limiter, cruise control, barrel roll, 360, backflip, rocket, jump, instant stop, flip upright, air control, low gravity, UFO mode, ghost mode, 9 teleport spots, run timers with best times, drag light tree with reaction times, on-screen speed and rev panel, nitrous strip, compass, g-force, drift angle and score, trip and top speed. **mph or km/h** with one switch |
+| Overlay | In game: boost, nitrous, pops and bangs, anti-lag, burnout, standing / rolling / wheelie launch, drift, more grip, **steering lock** (how far the front wheels turn, 20-90°), super brakes, speed limiter, cruise control, barrel roll, 360, backflip, rocket, jump, instant stop, flip upright, air control, low gravity, UFO mode, ghost mode, 9 teleport spots, run timers with best times, drag light tree with reaction times, on-screen speed and rev panel, nitrous strip, compass, g-force, drift angle and score, trip and top speed, **gas / brake graph** (the last 5 seconds of throttle and brake, like Assetto Corsa's input telemetry). **mph or km/h** with one switch |
 | Game modes | In game, switchable with `F2`: **speed bomb**, **score attack**, **pursuit** (drivatars chase you), with best results kept |
 
 - **Random car from my garage** picks one of the cars you own (read from your save) and shows it, so you know what to drive next.
@@ -108,6 +108,8 @@ Every key can be changed on the overlay's **Keys** tab. They only act while the 
 - Effects change only your own car, only while the overlay runs, and are put back when you pause, open the map or a menu, change car, press `End`, or close the overlay.
 - The **MPH / KM/H** switch in the menu header (or `U`) changes the gauges, every speed setting and the run timers (0-60 to 0-200 mph and 1/8 to 1 mile, or 0-100 to 0-400 km/h and 100 to 2000 m; best times are kept for both).
 - Stunts and the rocket need the car moving: a parked car is held by the game's brakes.
+- **Steering lock** (Driving tab, Handling) sets how far the front wheels turn: most cars turn 42° stock, try 60-70° for tight turns and drifting. The lock still narrows at speed by the same share. It has no key by default; set one on the Keys tab.
+- **Gas / brake graph** (Gauges tab, off by default): a 5-second trace of the throttle (green) and brake (red) with live bars. Drag it with Move gauges like the others.
 - The game must run in **windowed or borderless** mode (Azimuth's display setting) for the menu and gauges to show over it.
 - Single-player only: do not use it in online sessions with other players.
 
@@ -132,9 +134,9 @@ Pursuit notes (experimental):
 ## Requirements
 
 - Windows 10 or 11 (PowerShell 5.1 and .NET Framework 4.8, for the overlay, are built in)
-- Forza Horizon 2 for Xbox One (1.0.0.64) on **Azimuth 1.0.2** (1.0.1 works too). On an older Azimuth everything works except ghost cars, ExtraOptions' keys, world keys and sky road; update Azimuth from [itch.io](https://almost-there-games.itch.io/azimuth) (your saves carry over)
+- Forza Horizon 2 for Xbox One (1.0.0.64) on **Azimuth 1.0.4** (1.0.1 to 1.0.3 work too). On an older Azimuth everything works except ghost cars, ExtraOptions' keys, world keys and sky road; update Azimuth from [itch.io](https://almost-there-games.itch.io/azimuth) (your saves carry over)
 - **Python 3** on PATH, for the car list and car mods ([python.org](https://www.python.org/downloads/): tick **"Add python.exe to PATH"** when installing)
-- **[ExtraOptions](https://github.com/RokkuDayo/ForzaHorizon2_ExtraOptions) is included.** Apply installs ExtraOptions 0.3.2 with this tool's additions (ghost cars, world keys, random car, sky road) as `winmm.dll` next to `azimuth.exe`, with its settings in `FH2_ExtraOptions.ini` beside it; Restore originals puts back the one you had. You also get everything new in 0.3: its `mods` folder loader, Jump to Manufacturer, all online races offline, custom showcases, F1 to hide the HUD, photo mode from the garage, more audio and HUD options, and every key set in the ini. Its own settings are in the in-game menus.
+- **[ExtraOptions](https://github.com/RokkuDayo/ForzaHorizon2_ExtraOptions) is included.** Apply installs ExtraOptions 0.4.4 with this tool's additions (ghost cars, world keys, random car, sky road) as `winmm.dll` next to `azimuth.exe`, with its settings in `FH2_ExtraOptions.ini` beside it, and its two plugin mods (garage revving, time and weather control) in the `mods` folder; Restore originals puts back the one you had. You also get everything new in 0.3 and 0.4: its `mods` folder loader, Jump to Manufacturer, all online races offline, custom showcases, F1 to hide the HUD, photo mode from the garage, more audio and HUD options, every key set in the ini, time and weather controls in the pause menu (Y), a time slider in photo mode, headlights that light the road in daytime, a vignette toggle and garage revving in the outposts too. Its own settings are in the in-game menus.
 
 ## Setup
 
@@ -197,7 +199,8 @@ A file placed at `FH2 Mods\files\<zip name>\<file name>` replaces that file insi
 | `settings.json` | The window's values |
 | `cars.json` | Per-car multipliers |
 | `Diagnose.bat`, `diagnose.ps1` | Read-only check when Apply fails; writes `diagnose.txt` |
-| `ExtraOptions\winmm.dll` | ExtraOptions 0.3.2 with ghost cars, world keys, sky road and random car added |
+| `ExtraOptions\winmm.dll` | ExtraOptions 0.4.4 with ghost cars, world keys, sky road and random car added |
+| `ExtraOptions\mods\` | ExtraOptions' plugin mods (garage revving, time and weather control); Apply copies them to the `mods` folder and keeps their settings files if you changed them |
 | `ExtraOptions\FH2_ExtraOptions.ini` | Its default settings |
 | `ExtraOptions\source\` | Its source code (GPL-3) |
 

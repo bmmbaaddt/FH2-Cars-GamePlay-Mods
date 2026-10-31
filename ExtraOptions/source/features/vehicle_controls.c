@@ -4,6 +4,7 @@
 #include "features.h"
 #include "roof_fade.h"
 #include "roof_aero.h"
+#include "headlight_beams.h"
 #include "world_keys.h"
 #include "support.h"
 #include "bindings.h"
@@ -125,6 +126,7 @@ void vehicle_controls_bind(unsigned char *image) {
     blinkers_bind(image, clock_milliseconds);
     roof_fade_prepare_hook(image);
     roof_aero_prepare_hooks(image);
+    headlight_beams_bind(image);
     world_keys_prepare_hook(image);
     random_car_bind(image);
     uintptr_t original = (uintptr_t)(image + 0x2a9400);
@@ -169,6 +171,7 @@ static void toggle_headlights(void *car) {
     headlights.animation = animation;
     headlights.active = 1;
     headlights.enabled = enabled;
+    headlight_beams_set_car(car,enabled);
     ((HeadlightSetter)(game_image + 0xf74ef0))(car, enabled);
     ((HeadlightSetter)(game_image + 0xf74ee0))(car, 1);
 }
@@ -240,6 +243,8 @@ int vehicle_photo_lights_set(int value){
     ((HeadlightSetter)(game_image+0xf74ee0))(car,value?1:photo_lights.manual);
     if(value)headlights=(HeadlightState){car,photo_lights.animation,1,enabled};
     else headlights=photo_lights.previous;
+    headlight_beams_set_car(car,headlights.active && headlights.enabled && headlights.car==car &&
+                               headlights.animation==photo_lights.animation);
     refresh_photo_lights(car);
     photo_lights.value=value;autodrive_game_release_car(car);return 1;
 }
@@ -548,6 +553,8 @@ static void update_roof_transition(void *car, void *animation, uint64_t now) {
 }
 
 static void maintain_controls(void *car) {
+    headlight_beams_set_car(car,headlights.active && headlights.enabled && headlights.car==car &&
+                               headlights.animation==car_animation(car));
     if (!headlights.active && !roof.active && !roof.pending_event &&
         roof_transition.phase == ROOF_FADE_IDLE && roof_lock.remaining <= 0.0f) {
         return;
@@ -636,6 +643,7 @@ __declspec(dllexport) void Fh2TestVehicleReset(void) {
     blinkers_reset();
     gesture = (VehicleGesture){.blocked = 1};
     headlights = (HeadlightState){0};
+    headlight_beams_set_car(NULL,0);
     roof = (RoofState){0};
     popup_lights.active = 0;
     car_meet_car = car_meet_animation = NULL;

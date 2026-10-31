@@ -71,6 +71,7 @@ COMMON_SOURCES = [
     "features/addon_strings.c",
     "features/addon_wheels.c",
     "features/vehicle_controls.c",
+    "features/headlight_beams.c",
     "features/blinkers.c",
     "features/aero_tuning.c",
     "features/roof_fade.c",
@@ -90,6 +91,7 @@ COMMON_SOURCES = [
     "features/png_validation.c",
     "features/png_decode.c",
 ]
+FM5_SOURCES = ["features/fm5.c", "features/fm5_rims.c"]
 
 
 def parse_arguments():
@@ -97,6 +99,7 @@ def parse_arguments():
     parser.add_argument("zig", type=Path)
     parser.add_argument("--test", action="store_true")
     parser.add_argument("--azimuth", action="store_true", help="Build the Azimuth winmm proxy")
+    parser.add_argument("--fm5", action="store_true", help="Opt into the unfinished FM5 title profile (Azimuth only)")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--build-dir", type=Path)
     parser.add_argument("--jobs", type=int, default=min(8, os.cpu_count() or 1))
@@ -104,6 +107,8 @@ def parse_arguments():
     arguments = parser.parse_args()
     if arguments.jobs < 1:
         parser.error("--jobs must be positive")
+    if arguments.fm5 and not arguments.azimuth:
+        parser.error("--fm5 requires --azimuth")
     return arguments
 
 
@@ -134,10 +139,12 @@ def compiler_arguments(compiler, options):
         arguments.append("-DFH2_TWEAKS_TEST=1")
     if options.azimuth:
         arguments.append("-DFH2_AZIMUTH=1")
+    if options.fm5:
+        arguments.append("-DFH2_ENABLE_FM5=1")
     return arguments
 
 
-def version_resource(filename):
+def version_resource(filename, fm5=False):
     version = re.search(r'#define MOD_VERSION "([\d.]+)"',
                         (SOURCE / "extra_options.h").read_text()).group(1)
     manifest_version = json.loads((SOURCE / "patches.json").read_text())["version"]
@@ -159,10 +166,14 @@ def version_resource(filename):
             data = padded(data) + children
         return struct.pack("<H", len(data)) + data[2:]
 
-    strings = {"FileDescription": "Forza Horizon 2 Extra Options",
+    title = "Forza Horizon 2 / Motorsport 5 Extra Options" if fm5 else "Forza Horizon 2 Extra Options"
+    strings = {"FileDescription": title + " - " + ("Azimuth adapter" if filename == "winmm.dll" else "Mezcal adapter"),
                "FileVersion": version, "InternalName": "FH2_ExtraOptions",
-               "OriginalFilename": filename, "ProductName": "Forza Horizon 2 Extra Options",
-               "ProductVersion": version, "LegalCopyright": "Arthur (RokkuDayo)"}
+               "OriginalFilename": filename, "ProductName": title,
+               "ProductVersion": version, "LegalCopyright": "Arthur (RokkuDayo)",
+               "CompanyName": "Arthur (RokkuDayo)",
+               "Comments": ("Unofficial in-process game mod. FH2: 1A96545B. FM5: 7B35D917 (Azimuth only)."
+                            if fm5 else "Unofficial in-process game mod. Forza Horizon 2 only: 1A96545B.")}
     entries = b"".join(padded(block(key, wide(value), text=True)) for key, value in strings.items())
     string_info = block("StringFileInfo", children=block("040904b0", children=entries))
     variable_info = block("VarFileInfo", children=block("Translation", struct.pack("<HH", 0x409, 1200)))
@@ -195,7 +206,8 @@ def project_dependencies(path, seen=None):
         included = path.parent / name
         if not included.is_file():
             included = SOURCE / name
-        project_dependencies(included.resolve(), seen)
+        if included.is_file():   # includes behind an #ifdef may name files this tree lacks
+            project_dependencies(included.resolve(), seen)
     return seen
 
 
@@ -216,6 +228,8 @@ def build(compiler, output, directory, options):
     output.parent.mkdir(parents=True, exist_ok=True)
     objects = []
     sources = [*COMMON_SOURCES]
+    if options.fm5:
+        sources.extend(FM5_SOURCES)
     sources.extend(
         [
             "adapters/azimuth.c",
@@ -260,7 +274,7 @@ def build(compiler, output, directory, options):
                     str(SOURCE / "ntdll.def"), "-l", str(exception_library)],
                    [SOURCE / "ntdll.def"], exception_library, compiler, options.rebuild)
     resource = directory / "version.res"
-    resource.write_bytes(version_resource("winmm.dll" if options.azimuth else "xg.dll"))
+    resource.write_bytes(version_resource("winmm.dll" if options.azimuth else "xg.dll", options.fm5))
     link_arguments = [
         str(compiler),
         "lld-link",

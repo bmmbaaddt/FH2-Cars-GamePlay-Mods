@@ -34,6 +34,9 @@ namespace FH2Overlay
         const int Collision = -0x1bc;   // 2 = collides, 4 = ghost
         const int EngineSpeed = 0x148, Redline = 0x1c8, TorqueScale = 0xc4c, BrakeInput = 0xdfc, BrakeForce = 0xe20, Speed = 0xe28;
         const int TyreParams = 0xbc0, Tyres = 0x1640, TyreStride = 0x4b0, TyreLateralGrip = 12;
+        // steering lock: the body's max and filtered (steering assist) lock and its 32-step lock-by-speed table, in radians, rebuilt
+        // from the car's copy of its Data_Car SteerMaxAngle / SteerMaxAngleFiltered (degrees), so both are written
+        const int SteerMax = 0x58, SteerTable = 0xc8, SteerSteps = 32, CarSteerMax = 0x125c;
         static readonly int[] PoseCopies = { -0x390, 0xd30, 0xef0 };   // the body keeps its pose three times; teleport moves all
 
         // code the offsets above were read from; a different build is refused instead of written to
@@ -412,6 +415,31 @@ namespace FH2Overlay
         }
         public float Grip(Car car, long tyre) { Check(car); float g = Float(tyre + TyreLateralGrip); if (!(g >= 0.05f && g <= 40)) throw new Exception("bad grip"); return g; }
         public void SetGrip(Car car, long tyre, float g) { Check(car); if (!(g >= 0.05f && g <= 40)) throw new Exception("bad grip"); WriteFloat(tyre + TyreLateralGrip, g); }
+
+        // [max, filtered, table x32, Data_Car max, Data_Car filtered]: radians, then degrees; refused when they don't agree
+        public float[] Steering(Car car)
+        {
+            Check(car);
+            var b = Read(car.Sim + SteerMax, 8); var t = Read(car.Sim + SteerTable, SteerSteps * 4); var db = Read(car.Address + CarSteerMax, 8);
+            var v = new float[SteerSteps + 4];
+            v[0] = BitConverter.ToSingle(b, 0); v[1] = BitConverter.ToSingle(b, 4);
+            for (int i = 0; i < SteerSteps; i++) v[2 + i] = BitConverter.ToSingle(t, i * 4);
+            v[SteerSteps + 2] = BitConverter.ToSingle(db, 0); v[SteerSteps + 3] = BitConverter.ToSingle(db, 4);
+            float rad = (float)Math.PI / 180;
+            if (!(v[SteerSteps + 2] >= 5 && v[SteerSteps + 2] <= 120) || Math.Abs(v[0] - v[SteerSteps + 2] * rad) > 0.01f || Math.Abs(v[1] - v[SteerSteps + 3] * rad) > 0.01f)
+                throw new Exception("steering data not recognised");
+            for (int i = 0; i < SteerSteps; i++) if (!(v[2 + i] > 0 && v[2 + i] <= v[0] + 0.01f)) throw new Exception("steering table not recognised");
+            return v;
+        }
+        public void SetSteering(Car car, float[] v)
+        {
+            Check(car);
+            if (v.Length != SteerSteps + 4 || !(v[0] > 0.05f && v[0] < 1.6f && v[SteerSteps + 2] >= 5 && v[SteerSteps + 2] <= 90)) throw new Exception("bad steering");
+            byte[] Floats(int from, int n) { var b = new byte[n * 4]; Buffer.BlockCopy(v, from * 4, b, 0, b.Length); return b; }
+            Write(car.Address + CarSteerMax, Floats(SteerSteps + 2, 2));
+            Write(car.Sim + SteerMax, Floats(0, 2));
+            Write(car.Sim + SteerTable, Floats(2, SteerSteps));
+        }
 
         public void Dispose() { if (handle != IntPtr.Zero) { CloseHandle(handle); handle = IntPtr.Zero; } }
     }

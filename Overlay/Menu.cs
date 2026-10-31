@@ -87,7 +87,7 @@ namespace FH2Overlay
         bool TabActive(string name, Driving d)
         {
             if (d == null) return false;
-            if (name == "Driving") return d.Boost || d.NitrousOn || d.BurnoutActive || d.LaunchActive || d.Drift || d.Grip || d.Limiter || d.Cruise;
+            if (name == "Driving") return d.Boost || d.NitrousOn || d.BurnoutActive || d.LaunchActive || d.Drift || d.Grip || d.Steer || d.Limiter || d.Cruise;
             if (name == "Stunts & air") return d.Wheelie || d.Air || d.LowGravity || d.Ufo || d.Ghost;
             if (name == "Modes") return d.Modes.Mode != Modes.Kind.Off;
             return false;
@@ -203,6 +203,8 @@ namespace FH2Overlay
             Number("Drift rear grip  (x)", null, "DriftRearGrip", 0.1m, 3, 0.05m, 2);
             Live("More grip", "More grip on every tyre.", "Grip", d => d.Grip, (d, v) => d.Grip = v);
             Number("More grip  (x)", null, "GripBoost", 1.05m, 10, 0.05m, 2);
+            Live("Steering lock", "How far the front wheels turn (most cars: 42° stock). It still narrows at speed, by the same share.", "SteerLock", d => d.Steer, (d, v) => d.Steer = v);
+            Number("Steering lock  (degrees)", null, "SteerDegrees", 20, 90, 1);
             Setting("Super brakes", "A hard brake stops much faster (never pushes backwards).", "SuperBrakes");
             Number("Super brakes  (extra g)", null, "SuperBrakeG", 0.5m, 10, 0.5m, 1);
             Card("Speed");
@@ -294,6 +296,7 @@ namespace FH2Overlay
             Setting("Nitrous strip", null, "ShowNitrous");
             Setting("Readouts", "Compass, g-force, drift angle and best drift, trip distance, top speed.", "ShowStats");
             Setting("Status card", "What is switched on, and any problem.", "ShowStatus");
+            Setting("Gas / brake graph", "The last 5 seconds of throttle (green) and brake (red), like the input telemetry in Assetto Corsa.", "ShowPedals");
             Card("Layout");
             Number("Size  (x)", null, "HudScale", 0.5m, 3, 0.1m, 1);
             Switch("Move gauges", "Drag a gauge to move it, scroll on it to resize. Switch off when done.", () => hud.Moving, v => hud.SetMoving(v));

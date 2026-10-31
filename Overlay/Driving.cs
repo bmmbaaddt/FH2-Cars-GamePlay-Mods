@@ -24,9 +24,9 @@ namespace FH2Overlay
         public readonly Modes Modes;
 
         // switches the menu and the keys share
-        public volatile bool Boost, Drift, Grip, Limiter, Wheelie, Air, LowGravity, Ufo, Ghost, Cruise;
+        public volatile bool Boost, Drift, Grip, Steer, Limiter, Wheelie, Air, LowGravity, Ufo, Ghost, Cruise;
         public volatile string Status = "", Error = "";
-        public float Tank = 1, SpeedMs, Rpm, RedlineRpm, Throttle;
+        public float Tank = 1, SpeedMs, Rpm, RedlineRpm, Throttle, Brake;
         // readouts for the gauges: drift angle and score, g-force (along and across the car), compass, trip
         public float DriftAngle, DriftChain, DriftLast, DriftBest, GLong, GLat, Heading, TripMetres, TopMs, CruiseMs;
         float[] lastVelocity; long driftAt;
@@ -40,6 +40,7 @@ namespace FH2Overlay
         float? torqueSet;                   // the torque scale we wrote, null = untouched
         float[] brakesSaved; bool brakesHeld;
         long[] tyres; float frontStock, rearStock; float? frontSet, rearSet; bool tyresRefused;
+        float[] steerStock, steerSet; bool steerRefused;
         int backfireStock = -1; bool flamesOwned;
         bool ghostSet;
         float? previousVy; float airVyPrev = float.NaN, airAccel; int airCount;
@@ -66,7 +67,7 @@ namespace FH2Overlay
             if (input.Has("AllOff")) AllOff();
             if (!Live)
             {
-                Release(); CancelMoves();
+                Release(); CancelMoves(); Throttle = Brake = 0;
                 if (InCar) try { SpeedMs = game.SpeedMs(car); Rpm = game.Rpm(car); } catch { }
                 Status = InCar ? "paused" : "";
                 return;
@@ -79,7 +80,7 @@ namespace FH2Overlay
         {
             SpeedMs = game.SpeedMs(car); Rpm = game.Rpm(car); RedlineRpm = game.RedlineRpm(car);
             Throttle = game.Throttle();
-            float brake = game.BrakePedal();
+            float brake = Brake = game.BrakePedal();
             var notes = new List<string>();
 
             // switches
@@ -88,6 +89,7 @@ namespace FH2Overlay
             if (input.Has("BoostUp")) s.Boost = Math.Min(20, (float)Math.Round(s.Boost + 0.1f, 2));
             if (input.Has("Drift")) Drift = !Drift;
             if (input.Has("Grip")) Grip = !Grip;
+            if (input.Has("SteerLock")) Steer = !Steer;
             if (input.Has("Limiter")) Limiter = !Limiter;
             if (input.Has("Wheelie")) Wheelie = !Wheelie;
             if (input.Has("AirControl")) Air = !Air;
@@ -182,6 +184,8 @@ namespace FH2Overlay
             float rear = (Drift ? s.DriftRearGrip : 1) * (Grip ? s.GripBoost : 1), front = Grip ? s.GripBoost : 1;
             SetGrip(front, rear);
             if (Drift) notes.Add("drift"); if (Grip) notes.Add("grip");
+            SetSteering(Steer ? s.SteerDegrees : 0);
+            if (Steer) notes.Add($"lock {s.SteerDegrees:0}°");
 
             // ghost
             if (Ghost != ghostSet) { if (game.SetGhost(car, Ghost)) ghostSet = Ghost; else { Ghost = false; notes.Add("ghost not available here"); } }
@@ -314,6 +318,26 @@ namespace FH2Overlay
             if (!Game.Near(rNow, rWant)) game.SetGrip(car, tyres[1], rWant);
             frontSet = fWant; rearSet = rWant;
             if (!want) { tyres = null; frontSet = rearSet = null; }
+        }
+
+        // steering lock in degrees, 0 = stock: the whole lock-by-speed table is scaled with it, so it still narrows at speed
+        void SetSteering(float degrees)
+        {
+            if (degrees == 0 && steerStock == null) return;
+            if (steerStock == null)
+            {
+                if (steerRefused) return;
+                try { steerStock = game.Steering(car); }
+                catch (Exception e) { steerRefused = true; Steer = false; Error = "steering lock not available for this car: " + e.Message; return; }
+            }
+            var now = game.Steering(car);
+            bool Same(float[] a, float[] b) => b != null && a.Zip(b, (x, y) => Math.Abs(x - y) <= 1e-3f * Math.Max(1, Math.Abs(y))).All(x => x);   // the game may rebuild the table with its own rounding
+            if (!Same(now, steerStock) && !Same(now, steerSet)) { steerStock = steerSet = null; Steer = false; return; }   // someone else wrote it: let go
+            float k = degrees == 0 ? 1 : degrees / steerStock[steerStock.Length - 2];
+            var want = steerStock.Select(x => x * k).ToArray();
+            if (!Same(now, want)) game.SetSteering(car, want);
+            steerSet = want;
+            if (degrees == 0) steerStock = steerSet = null;
         }
 
         void SaveSpot()
@@ -525,9 +549,10 @@ namespace FH2Overlay
             try { HoldBrakes(false); } catch { }
             try { Flames(false, 0); } catch { }
             try { if (tyres != null) SetGrip(1, 1); } catch { }
+            try { if (steerStock != null) SetSteering(0); } catch { }
             Forget();
         }
-        void Forget() { torqueSet = null; brakesHeld = false; flamesOwned = false; tyres = null; frontSet = rearSet = null; }
+        void Forget() { torqueSet = null; brakesHeld = false; flamesOwned = false; tyres = null; frontSet = rearSet = null; steerStock = steerSet = null; }
 
         // the car is gone or changed: also its ghost flag, and the new car gets a fresh grip check
         void LetGo()
@@ -535,13 +560,13 @@ namespace FH2Overlay
             EndChase(); Modes.Stop();
             Release();
             try { if (ghostSet && car != null && game.Valid(car)) game.SetGhost(car, false); } catch { }
-            ghostSet = false; tyresRefused = false;
+            ghostSet = false; tyresRefused = steerRefused = false;
         }
 
         public void AllOff()
         {
             Modes.Stop(); EndChase();
-            Boost = Drift = Grip = Limiter = Wheelie = Air = LowGravity = Ufo = Ghost = Cruise = false;
+            Boost = Drift = Grip = Steer = Limiter = Wheelie = Air = LowGravity = Ufo = Ghost = Cruise = false;
             CancelMoves();
             try { if (ghostSet && car != null && game.Valid(car)) game.SetGhost(car, false); } catch { }
             ghostSet = false;

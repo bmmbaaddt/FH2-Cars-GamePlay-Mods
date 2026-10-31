@@ -29,6 +29,7 @@ namespace FH2Overlay
         // Handling
         public float DriftRearGrip = 0.5f;      // x rear tyre grip while drift is on
         public float GripBoost = 1.5f;          // x grip on every tyre while more grip is on
+        public float SteerDegrees = 60;         // front wheel lock while steering lock is on (most cars: 42 stock)
         public bool SuperBrakes = false;
         public float SuperBrakeG = 2;           // extra braking, in g, when the brake is pressed hard
         public float LimiterMph = 80;
@@ -41,10 +42,10 @@ namespace FH2Overlay
         public float UfoClimbMph = 25;
         // Timers and HUD
         public bool Kmh = false;
-        public bool ShowSpeedo = true, ShowNitrous = true, ShowStatus = true, ShowTimer = true, ShowShiftLight = true, ShowStats = true;
+        public bool ShowSpeedo = true, ShowNitrous = true, ShowStatus = true, ShowTimer = true, ShowShiftLight = true, ShowStats = true, ShowPedals = false;
         public bool DragTree = false, ProTree = false;
         public float HudScale = 1;
-        public int SpeedoX = -1, SpeedoY = -1, CardX = -1, CardY = -1;   // -1 = default corner
+        public int SpeedoX = -1, SpeedoY = -1, CardX = -1, CardY = -1, PedalsX = -1, PedalsY = -1;   // -1 = default corner
         public string Accent = "#22D3EE";
         public int MenuOpacity = 94;
         // Game modes
@@ -101,6 +102,7 @@ namespace FH2Overlay
             ("WheelieLaunch", Keys.F11, "wheelie launch"),
             ("Drift", Keys.None, "drift on / off"),
             ("Grip", Keys.Delete, "more grip on / off"),
+            ("SteerLock", Keys.None, "steering lock on / off"),
             ("Limiter", Keys.F3, "speed limiter on / off"),
             ("Wheelie", Keys.F12, "wheelie mode on / off"),
             ("Jump", Keys.F4, "jump"),
