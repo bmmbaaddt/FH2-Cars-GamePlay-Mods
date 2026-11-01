@@ -12,6 +12,13 @@ Azimuth's developer does not support modded setups: if something breaks,
 use "Restore originals" before asking them for help.
 
 
+NEW IN 2.0.1
+------------
+- Fixed: Apply failed with "pattern not found in
+  AI/CarLoadingSettings.xml: MaxActiveTraffic" when another traffic mod
+  had changed that file. The traffic cap is now scaled from its value.
+
+
 NEW IN 2.0
 ----------
 - One app instead of the window and the overlay. FH2 Mods.bat is gone:

@@ -23,6 +23,9 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" "FH2-Cars-GamePlay-Mods-${GITHUB_REF_NAME}.zip" --title "FH2 Cars & Gameplay Mods ${GITHUB_REF_NAME}" --notes "Extract the zip and put the **FH2 Mods** folder next to azimuth.exe, then double-click **FH2 Mods.exe**. Requires Python 3 on PATH and **Azimuth 1.0.4**. See the README for setup and keyboard shortcuts.
 
+          **What's new in 2.0.1**
+          - **Fixed:** Apply failed with "pattern not found in AI/CarLoadingSettings.xml: MaxActiveTraffic" when another traffic mod had changed that file before FH2 Mods made its backup. The traffic cap is now scaled from whatever value the file has. Update and press Apply.
+
           **What's new in 2.0**
           - **One app: FH2 Mods.exe.** The settings window (FH2 Mods.bat) is gone. With the game closed the menu opens on the new **Setup** tab (everything the window had, plus Apply, Apply & Play, Play and Restore originals) and the **Cars** tab; it then stays in the tray and is the overlay in game (Insert). Updating: extract over 1.x; settings.json, cars.json and overlay.ini carry over, and the old FH2 Mods.bat, FH2 Mods.ps1 and FH2 Mods Overlay.exe are removed when FH2 Mods.exe first starts.
           - **Cars tab:** search for a car or press *The car I'm in*. New **Rev ceiling** (rev limit past 10,500 rpm for one car, up to 20,000; at your own risk). **Export / Import tune** to share a car's setup.

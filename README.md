@@ -8,6 +8,10 @@ One app for **Forza Horizon 2 (Xbox One)** running on **Azimuth**. With the game
 
 > Not affiliated with Microsoft, Playground Games, Turn 10 or Azimuth. Azimuth's developer does not support modded setups: if something breaks, press **Restore originals** before asking them for help.
 
+## What's new in 2.0.1
+
+- **Fixed:** Apply failed with "pattern not found in AI/CarLoadingSettings.xml: MaxActiveTraffic" when another traffic mod had changed that file before FH2 Mods made its backup. The traffic cap is now scaled from whatever value the file has.
+
 ## What's new in 2.0
 
 - **One app instead of the window and the overlay.** Double-click `FH2 Mods.exe`: with the game closed its menu opens on the **Setup** tab (everything the old window had, plus Apply, Apply & Play, Play and Restore originals). It then stays in the tray and becomes the overlay when the game runs. 1.x's `FH2 Mods.bat`, `FH2 Mods.ps1` and `FH2 Mods Overlay.exe` are deleted the first time it starts.
