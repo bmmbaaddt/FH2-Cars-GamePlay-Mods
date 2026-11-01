@@ -20,6 +20,8 @@ namespace FH2Overlay
         readonly Runs runs;
         readonly Hud hud;
         readonly Action<string> request;   // a one-shot action for the engine thread (teleport, all off...)
+        readonly Setup setup = new Setup();
+        int carId;   // the car the Cars tab edits
         readonly FlowLayoutPanel tabs = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 40, Padding = new Padding(12, 6, 0, 0) };
         readonly FlowLayoutPanel page = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoScroll = true, Padding = new Padding(12, 10, 0, 10) };
         readonly Label pill = new Label { AutoSize = true, Font = new Font("Bahnschrift SemiBold", 9), Padding = new Padding(8, 3, 8, 3) };
@@ -36,8 +38,8 @@ namespace FH2Overlay
         public Menu(Settings s, Func<Driving> driving, Runs runs, Hud hud, Action<string> request)
         {
             this.s = s; this.driving = driving; this.runs = runs; this.hud = hud; this.request = request;
-            Text = "FH2 Mods Overlay"; FormBorderStyle = FormBorderStyle.None; TopMost = true; ShowInTaskbar = false;
-            BackColor = Back; ForeColor = Ink; Font = new Font("Segoe UI", 9.5f); Size = new Size(760, 560); StartPosition = FormStartPosition.Manual;
+            Text = "FH2 Mods"; FormBorderStyle = FormBorderStyle.None; TopMost = true; ShowInTaskbar = true;
+            BackColor = Back; ForeColor = Ink; Font = new Font("Segoe UI", 9.5f); Size = new Size(880, 600); StartPosition = FormStartPosition.Manual;
             Opacity = s.MenuOpacity / 100.0; KeyPreview = true;
 
             var head = new Panel { Dock = DockStyle.Top, Height = 50, BackColor = Bar };
@@ -48,7 +50,8 @@ namespace FH2Overlay
             units.Click += (o, e) => { s.Kmh = !s.Kmh; s.Save(); Open(current); };
             tips.SetToolTip(units, "Speeds in the menu, gauges and run timers. [" + KeyName(s.Bind["Units"]) + "] in game.");
             var close = new Label { Text = "✕", AutoSize = true, Font = new Font("Segoe UI", 12), ForeColor = Dim, Cursor = Cursors.Hand, Location = new Point(Width - 40, 13), Anchor = AnchorStyles.Top | AnchorStyles.Right };
-            close.Click += (o, e) => Hide();
+            close.Click += (o, e) => { if (GameState() == "WAITING FOR GAME") request("Exit"); else Hide(); };   // no game: the menu is the launcher, so it closes the overlay
+            tips.SetToolTip(close, "Hide the menu (the overlay keeps running in the tray). With the game closed, this closes the overlay.");
             head.Controls.AddRange(new Control[] { title, sub, pill, units, close });
             foreach (Control c in new Control[] { head, title, sub })
             {
@@ -62,9 +65,10 @@ namespace FH2Overlay
             tabs.BackColor = Bar;
             Controls.Add(page); Controls.Add(tabs); Controls.Add(foot); Controls.Add(head);
 
-            Tab("Driving", DrivingTab); Tab("Stunts & air", StuntsTab); Tab("Modes", ModesTab); Tab("Timers", TimersTab); Tab("Teleport", TeleportTab);
+            Tab("Setup", SetupTab); Tab("Cars", CarsTab); Tab("Driving", DrivingTab); Tab("Stunts & air", StuntsTab); Tab("Modes", ModesTab); Tab("Timers", TimersTab); Tab("Teleport", TeleportTab);
             Tab("Gauges", GaugesTab); Tab("Keys", KeysTab); Tab("About", AboutTab);
             Open("Driving");
+            System.Threading.Tasks.Task.Run(() => setup.LoadCars());
 
             var t = new Timer { Interval = 200 }; t.Tick += (o, e) => { if (Visible) Tick(); }; t.Start();
             VisibleChanged += (o, e) => { if (!Visible) { s.Save(); if (hud.Moving) hud.SetMoving(false); } };
@@ -155,11 +159,18 @@ namespace FH2Overlay
         {
             var f = typeof(Settings).GetField(field);
             decimal k = speed && s.Kmh ? (decimal)Units.KmPerMile : 1;
-            var p = Line(label + (speed ? $"  ({Units.Name(s.Kmh)})" : ""), help);
-            var n = new NumericUpDown { Minimum = Math.Round(min * k), Maximum = Math.Round(max * k), Increment = step, DecimalPlaces = decimals, Width = 82, Location = new Point(p.Width - 84, 3), BackColor = Field, ForeColor = Ink, BorderStyle = BorderStyle.None, TextAlign = HorizontalAlignment.Right, Font = new Font("Bahnschrift", 10) };
-            decimal Shown() => Math.Max(n.Minimum, Math.Min(n.Maximum, Math.Round(Convert.ToDecimal(f.GetValue(s)) * k, decimals)));
+            NumberBox(label + (speed ? $"  ({Units.Name(s.Kmh)})" : ""), help, () => Convert.ToDecimal(f.GetValue(s)) * k, v => f.SetValue(s, Convert.ChangeType(v / k, f.FieldType)),
+                      Math.Round(min * k), Math.Round(max * k), step, decimals);
+        }
+        void NumberBox(string label, string help, Func<decimal> get, Action<decimal> set, decimal min, decimal max, decimal step, int decimals = 0)
+        {
+            var p = Line(label, help);
+            int w = max >= 100000 ? 120 : 82;
+            var n = new NumericUpDown { Minimum = min, Maximum = max, Increment = step, DecimalPlaces = decimals, Width = w, Location = new Point(p.Width - w - 2, 3), BackColor = Field, ForeColor = Ink, BorderStyle = BorderStyle.None, TextAlign = HorizontalAlignment.Right, Font = new Font("Bahnschrift", 10), ThousandsSeparator = max >= 100000 };
+            p.Controls[0].Width = p.Width - w - 8;
+            decimal Shown() => Math.Max(n.Minimum, Math.Min(n.Maximum, Math.Round(get(), decimals)));
             n.Value = Shown();
-            n.ValueChanged += (o, e) => { if (Shown() != n.Value) f.SetValue(s, Convert.ChangeType(n.Value / k, f.FieldType)); };
+            n.ValueChanged += (o, e) => { if (Shown() != n.Value) set(n.Value); };
             refreshers.Add(() => { if (!n.Focused && Shown() != n.Value) n.Value = Shown(); });   // F7 / F8 change boost while open
             p.Controls.Add(n);
         }
@@ -178,6 +189,125 @@ namespace FH2Overlay
         string K(string action) => s.Bind[action] == Keys.None ? "no key" : KeyName(s.Bind[action]);
 
         // ---- tabs
+        void SetupTab()
+        {
+            Card("Game files", true);
+            Note("These change the game's files: they need the game closed, then Apply (or Apply & Play). Everything here is saved as you change it.");
+            var status = new Label { AutoSize = false, Width = card.Width - 24, Height = 36, ForeColor = Ink };
+            refreshers.Add(() =>
+            {
+                status.Text = setup.Busy ? "Working..." : setup.Status != "" ? setup.Status : Setup.GameRunning() ? "The game is running: close it to apply." : "Ready.";
+                status.ForeColor = setup.Status.StartsWith("Done") ? Accent : setup.Status.Contains("ail") || setup.Status.StartsWith("Close") ? Color.FromArgb(255, 170, 90) : Ink;
+            });
+            refreshers.Last()(); Put(status);
+            void Do(bool restore, bool play)
+            {
+                if (setup.Busy) return;
+                setup.Busy = true; setup.Status = "";
+                System.Threading.Tasks.Task.Run(() => { try { if (setup.Apply(restore) && play) Setup.Play(); } catch (Exception e) { setup.Status = "Failed: " + e.Message; } finally { setup.Busy = false; } });
+            }
+            Buttons(Btn("Apply", () => Do(false, false)), Btn("Apply && Play", () => Do(false, true)), Btn("Play", () => { if (!Setup.GameRunning()) Setup.Play(); }), Btn("Restore originals", () => Do(true, false)));
+            Card("Traffic");
+            SetupNumber("Free roam traffic  (%)", "0 = off, 100 = normal.", "FreeRoamTrafficPercent", 0, 300, 10);
+            SetupSwitch("Traffic in races and showcases", null, "RaceTraffic");
+            SetupSwitch("Traffic in road trips", null, "RoadTripTraffic");
+            SetupSwitch("Ghost cars", "Drive through every other car (they stay visible).", "GhostTraffic");
+            Card("Crashes");
+            SetupSwitch("Less spinning and flipping", "Reduces it from crashes, does not remove it.", "NoCrashSpin");
+            SetupSwitch("Slide off walls", "Slide along walls and barriers instead of stopping dead.", "SlideOffWalls");
+            SetupSwitch("Light breakables", "Fences, signs, bins... weigh almost nothing, so they barely slow you.", "LightBreakables");
+            Card("Money");
+            SetupNumber("CR per level-up", "Keep your total CR under about 2,000,000,000: the game may store it as a 32-bit number, and VIP doubles every payout.", "CreditsPerLevel", 0, 999999999, 1000000);
+            SetupNumber("CR per km in races", null, "CreditsPerKm", 0, 100000000, 10000);
+            Card("Skills");
+            SetupNumber("Skill points  (x)", null, "SkillPointsMultiplier", 1, 1000, 10);
+            SetupNumber("Skill chain XP  (x)", null, "SkillXPMultiplier", 1, 1000, 10);
+            SetupNumber("Max chain multiplier", "The game's own is 5.", "MaxSkillMultiplier", 1, 100, 1);
+            SetupNumber("Seconds to keep a chain", "0 = the game's own.", "SkillChainSeconds", 0, 60, 1);
+            SetupSwitch("Crashes keep the chain", null, "CrashesKeepSkillChain");
+            Card("Packs  (every car)", true);
+            Note("A pack your garage uses can only be switched off after fitting the stock part in game.");
+            SetupNumber("Race+ engine parts  (% more torque, 0 = off)", null, "PackEngineParts", 0, 200, 5);
+            SetupSwitch("Engine swaps: every engine fits every car", "Sorted by size in the game's engine swap list.", "PackEngineSwaps");
+            SetupNumber("Ultra grip tires  (% more grip than race slicks, 0 = off)", "A new tire upgrade for every car, after the rally tires.", "PackUltraTires", 0, 300, 10);
+            SetupNumber("Race+ weight reduction  (% lighter than stock, 0 = off)", "A level after the game's race weight reduction. Up to 60%.", "PackWeight", 0, 60, 5);
+            SetupSwitch("AWD and RWD conversions for every car", "The game's own conversions, for the cars that don't offer them.", "PackDrivetrains");
+            SetupSwitch("Turbos for every engine", "A twin turbo upgrade for the engines with no turbo or supercharger option (Ferrari 330 P4, Miura, 787B...).", "PackTurbos");
+            SetupSwitch("Traffic and AI cars for sale in the Autoshow", null, "PackTrafficCars");
+            SetupSwitch("Free cars: every car costs 1 CR", null, "PackFreeCars");
+            SetupSwitch("Free upgrades: every part and swap costs 1 CR", null, "PackFreeParts");
+            Card("World keys  (free roam)");
+            SetupSwitch("World keys", "Time: Ctrl+T midnight, Y sunrise, U midday, I sunset, P freeze clock. Weather: Ctrl+W rain, R clear. Ctrl+G traffic off/on, N repair, B back on the road. Ctrl+F sky road (experimental).", "WorldControls");
+            Card("Cameras");
+            SetupNumber("Cockpit FOV", "The game's own is 48.", "CockpitFOV", 30, 100, 1);
+            SetupNumber("Hood FOV", "The game's own is 66.", "HoodFOV", 30, 120, 1);
+            SetupNumber("Bumper FOV", "The game's own is 48.", "BumperFOV", 30, 120, 1);
+            SetupNumber("Chase near FOV", "The game's own is 48.5.", "ChaseNearFOV", 30, 120, 0.5m, 1);
+            SetupNumber("Chase far FOV", "The game's own is 58.", "ChaseFarFOV", 30, 120, 1);
+            SetupNumber("Seat back / forward  (m)", null, "SeatOffsetZ", -1, 1, 0.05m, 2);
+            SetupNumber("Seat up / down  (m)", null, "SeatOffsetY", -1, 1, 0.05m, 2);
+        }
+        void SetupSwitch(string label, string help, string key) => Switch(label, help, () => setup.Flag(key), v => { setup.Values[key] = v; setup.Save(); });
+        void SetupNumber(string label, string help, string key, decimal min, decimal max, decimal step, int decimals = 0) =>
+            NumberBox(label, help, () => (decimal)setup.Num(key), v => { setup.Values[key] = (double)v; setup.Save(); }, min, max, step, decimals);
+
+        void CarsTab()
+        {
+            Card("Car", true);
+            Note("Per-car changes to the game's files (x1 = stock; grip and brakes act on the race tires and race brakes). Apply them on the Setup tab with the game closed.");
+            var pick = new ComboBox { Width = card.Width - 24, BackColor = Field, ForeColor = Ink, Font = new Font("Bahnschrift", 10), AutoCompleteMode = AutoCompleteMode.SuggestAppend, AutoCompleteSource = AutoCompleteSource.ListItems, FlatStyle = FlatStyle.Flat };
+            var list = setup.CarList;
+            if (list == null) { pick.Items.Add("loading the car list..."); refreshers.Add(() => { if (setup.CarList != null && current == "Cars") BeginInvoke((Action)(() => Open("Cars"))); }); }
+            else
+            {
+                pick.Items.AddRange(list.Select(c => (object)c.name).ToArray());
+                int at = list.FindIndex(c => c.id == carId); if (at >= 0) pick.SelectedIndex = at;
+                pick.SelectedIndexChanged += (o, e) => { if (pick.SelectedIndex >= 0 && list[pick.SelectedIndex].id != carId) { carId = list[pick.SelectedIndex].id; BeginInvoke((Action)(() => Open("Cars"))); } };
+            }
+            Put(pick, 26);
+            Buttons(Btn("The car I'm in", () => { var d = driving(); if (d != null && d.Model > 0) { carId = d.Model; Open("Cars"); } }),
+                    Btn("Random car from my garage", () =>
+                    {
+                        string r = setup.RandomCar();
+                        if (int.TryParse(r, out int id)) { carId = id; setup.Status = $"Drive the {setup.CarName(id)}: pick it in your garage in game."; } else setup.Status = r;
+                        Open("Cars");
+                    }),
+                    Btn("Back to stock", () => { if (carId > 0) { setup.Cars.Remove(carId); setup.Save(); Open("Cars"); } }));
+            if (setup.Status.StartsWith("Drive the") || setup.Status.StartsWith("Random") || setup.Status.StartsWith("Tune")) Note(setup.Status);
+            if (carId > 0)
+            {
+                Card("Performance");
+                CarNumber("Power  (x)", null, "power", 0.1m, 100, 0.1m, 2);
+                CarNumber("Turbo boost  (x, turbo cars)", null, "turbo", 0.1m, 100, 0.1m, 2);
+                CarNumber("Rev limit  (x)", "x2 at most, more while the engine stays under the rev ceiling (slow-revving diesels).", "redline", 0.1m, 10, 0.1m, 2);
+                CarNumber("Rev ceiling  (rpm)", "The highest redline the rev limit may reach. The game's fastest-revving engines stop at 10500; higher can crash the game when the car loads. At your own risk.", "rpm_cap", 10500, 20000, 500);
+                CarNumber("Gearing  (x, higher = taller)", "Taller gears: more top speed, slower acceleration.", "gearing", 0.1m, 100, 0.1m, 2);
+                CarNumber("Forward gears  (1 = stock)", "Up to 8.", "gears", 1, 8, 1);
+                Card("Grip and air");
+                CarNumber("Tire grip  (x)", null, "grip", 0.1m, 100, 0.1m, 2);
+                CarNumber("Brake strength  (x)", null, "brakes", 0.1m, 100, 0.1m, 2);
+                CarNumber("Air drag  (x, lower = faster)", null, "drag", 0.1m, 100, 0.1m, 2);
+                CarNumber("Downforce  (x)", null, "downforce", 0.1m, 100, 0.1m, 2);
+                Buttons(Btn("Export tune", ExportTune), Btn("Import tune", ImportTune));
+            }
+            Card("Modded cars", true);
+            Note(setup.Cars.Count == 0 ? "none (all stock)" : string.Join(", ", setup.Cars.Keys.Select(setup.CarName)));
+        }
+        void CarNumber(string label, string help, string field, decimal min, decimal max, decimal step, int decimals = 0) =>
+            NumberBox(label, help, () => (decimal)setup.Car(carId, field), v => setup.SetCar(carId, field, (double)v), min, max, step, decimals);
+        void ExportTune()
+        {
+            using (var d = new SaveFileDialog { Filter = "FH2 Mods tune|*.json", FileName = string.Concat(setup.CarName(carId).Split(System.IO.Path.GetInvalidFileNameChars())) + ".json" })
+                if (d.ShowDialog(this) == DialogResult.OK) { System.IO.File.WriteAllText(d.FileName, setup.ExportTune(carId)); setup.Status = "Tune saved: " + System.IO.Path.GetFileName(d.FileName); Open("Cars"); }
+        }
+        void ImportTune()
+        {
+            using (var d = new OpenFileDialog { Filter = "FH2 Mods tune|*.json" })
+                if (d.ShowDialog(this) == DialogResult.OK)
+                    try { carId = setup.ImportTune(System.IO.File.ReadAllText(d.FileName)); setup.Status = $"Tune loaded for the {setup.CarName(carId)}: Apply on the Setup tab."; Open("Cars"); }
+                    catch (Exception e) { setup.Status = "Tune not loaded: " + e.Message; Open("Cars"); }
+        }
+
         void DrivingTab()
         {
             Card("Boost");
@@ -297,10 +427,19 @@ namespace FH2Overlay
             Setting("Readouts", "Compass, g-force, drift angle and best drift, trip distance, top speed.", "ShowStats");
             Setting("Status card", "What is switched on, and any problem.", "ShowStatus");
             Setting("Gas / brake graph", "The last 5 seconds of throttle (green) and brake (red), like the input telemetry in Assetto Corsa.", "ShowPedals");
+            Setting("G-force meter", "A circle with the g-force along and across the car, and the last second as a trail.", "ShowGMeter");
+            Setting("Power graph", "The fitted engine's torque and power curve (stock engine parts) with your rpm on it.", "ShowPowerGraph");
+            Card("Telemetry");
+            Note("Records speed, rpm, throttle, brake, g-force, drift angle, heading and position 20 times a second while you drive, to a CSV file (Excel, Google Sheets).");
+            Live("Record", null, "Record", d => d.Recording, (d, v) => d.Recording = v);
+            var file = new Label { AutoSize = false, Width = card.Width - 24, Height = 18, ForeColor = Dim };
+            refreshers.Add(() => { var d = driving(); file.Text = d == null || d.LogFile == "" ? "no recording yet" : System.IO.Path.GetFileName(d.LogFile); });
+            refreshers.Last()(); Put(file);
+            Buttons(Btn("Open the logs folder", () => { var dir = System.IO.Path.Combine(Setup.Dir, "logs"); System.IO.Directory.CreateDirectory(dir); System.Diagnostics.Process.Start(dir); }));
             Card("Layout");
             Number("Size  (x)", null, "HudScale", 0.5m, 3, 0.1m, 1);
             Switch("Move gauges", "Drag a gauge to move it, scroll on it to resize. Switch off when done.", () => hud.Moving, v => hud.SetMoving(v));
-            Buttons(Btn("Default positions", () => { s.SpeedoX = s.SpeedoY = s.CardX = s.CardY = -1; s.HudScale = 1; }));
+            Buttons(Btn("Default positions", () => { s.SpeedoX = s.SpeedoY = s.CardX = s.CardY = s.PedalsX = s.PedalsY = s.TeleX = s.TeleY = -1; s.HudScale = 1; }));
             Card("Colours");
             Buttons(Btn("Accent colour", () => { using (var c = new ColorDialog { Color = Accent, FullOpen = true }) if (c.ShowDialog(this) == DialogResult.OK) { s.Accent = ColorTranslator.ToHtml(c.Color); Open("Gauges"); } }),
                     Btn("Default", () => { s.Accent = "#22D3EE"; Open("Gauges"); }));
@@ -339,10 +478,10 @@ namespace FH2Overlay
         }
         void AboutTab()
         {
-            Card("FH2 Mods Overlay", true);
+            Card("FH2 Mods " + Application.ProductVersion, true);
             Note("Driving effects for Forza Horizon 2 1.0.0.64 on Azimuth, part of FH2 Mods. They change only your own car, only while the overlay runs, and are put back when you pause, open the map or a menu, change car, press All off, or close it.");
             Note("Single-player only: do not use it in online sessions with other players.");
-            Note("Packs (Race+ engine parts, engine swaps, traffic cars for sale, free cars) are in the FH2 Mods window: they change the game files, so they need Apply and a game restart.");
+            Note("Setup and Cars change the game's files (what the FH2 Mods window did): set them with the game closed, then Apply or Apply & Play.");
             Note("The game must run in windowed or borderless mode for the menu and gauges to show over it.");
             Buttons(Btn("Close the overlay", () => request("Exit")));
         }
@@ -350,7 +489,8 @@ namespace FH2Overlay
         public void ShowOver(IntPtr game)
         {
             if (game != IntPtr.Zero && GetWindowRect(game, out RECT r)) Location = new Point(r.L + Math.Max(20, (r.R - r.L - Width) / 2), r.T + Math.Max(40, (r.B - r.T - Height) / 2));
-            Show(); Activate(); Open(current ?? "Driving");
+            else if (game == IntPtr.Zero) { var a = Screen.PrimaryScreen.WorkingArea; Location = new Point(a.X + (a.Width - Width) / 2, a.Y + (a.Height - Height) / 2); }
+            Show(); Activate(); Open(current ?? (game == IntPtr.Zero ? "Setup" : "Driving"));
         }
         [StructLayout(LayoutKind.Sequential)] struct RECT { public int L, T, R, B; }
         [DllImport("user32")] static extern bool GetWindowRect(IntPtr w, out RECT r);

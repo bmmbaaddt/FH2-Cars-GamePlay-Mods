@@ -1,5 +1,6 @@
-// FH2 Mods Overlay: waits for the game, runs the driving effects on their own thread, and shows the menu (Insert) and
-// gauges over the game. "--test" runs the self-checks and exits.
+// FH2 Mods: with the game closed, the menu is the launcher (Setup and Cars change the game's files, Apply & Play starts it);
+// then it waits for the game, runs the driving effects on their own thread, and shows the menu (Insert) and gauges over
+// the game. "--test" runs the self-checks and exits.
 using System;
 using System.Collections.Concurrent;
 using System.Drawing;
@@ -114,7 +115,10 @@ namespace FH2Overlay
             }
             using (var single = new Mutex(true, "FH2ModsOverlay", out bool first))
             {
-                if (!first) { MessageBox.Show("FH2 Mods Overlay is already running. Press Insert in the game.", "FH2 Mods Overlay"); return 0; }
+                if (!first) { MessageBox.Show("FH2 Mods is already running: double-click its tray icon, or press Insert in the game.", "FH2 Mods"); return 0; }
+                // 1.x's window and overlay, left behind when 2.0 was extracted over them: this exe does both now
+                foreach (var old in new[] { "FH2 Mods.bat", "FH2 Mods.ps1", "FH2 Mods Overlay.exe" })
+                    try { File.Delete(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, old)); } catch { }
                 Application.EnableVisualStyles();
                 s = new Settings(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "overlay.ini"));
                 runs.Load(s.BestTimes);
@@ -124,7 +128,7 @@ namespace FH2Overlay
                 var hud = new Hud(s, () => driving, runs) { GameWindow = () => game?.Window ?? IntPtr.Zero };
                 var menu = new Menu(s, () => driving, runs, hud, a => requests.Enqueue(a)) { GameState = () => state };
                 hud.MenuOpen = () => menu.Visible;
-                var tray = new NotifyIcon { Text = "FH2 Mods Overlay (Insert in game)", Icon = SystemIcons.Application, Visible = true };
+                var tray = new NotifyIcon { Text = "FH2 Mods (Insert in game)", Icon = SystemIcons.Application, Visible = true };
                 tray.ContextMenuStrip = new ContextMenuStrip();
                 tray.ContextMenuStrip.Items.Add("Show menu", null, (o, e) => menu.ShowOver(game?.Window ?? IntPtr.Zero));
                 tray.ContextMenuStrip.Items.Add("All off", null, (o, e) => requests.Enqueue("AllOff"));
@@ -137,7 +141,8 @@ namespace FH2Overlay
                     if (requests.Contains("Exit")) Application.Exit();
                 };
                 ui.Start();
-                tray.ShowBalloonTip(3000, "FH2 Mods Overlay", "Running. Press Insert in the game for the menu.", ToolTipIcon.None);
+                if (System.Diagnostics.Process.GetProcessesByName("azimuth").Length == 0) menu.ShowOver(IntPtr.Zero);   // no game yet: the menu is the launcher (Setup, Cars, Apply & Play)
+                else tray.ShowBalloonTip(3000, "FH2 Mods", "Running. Press Insert in the game for the menu.", ToolTipIcon.None);
                 Application.ApplicationExit += (o, e) => tray.Visible = false;
                 Application.Run();
 

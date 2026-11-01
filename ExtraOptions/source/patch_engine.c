@@ -254,6 +254,9 @@ static const PatchDefinition *const callback_patches[] = {&local_liveries_hook_p
                                                           &world_keys_hook_patches[1],
                                                           &ghost_traffic_patches[0],
                                                           &ghost_traffic_patches[1],
+                                                          &dealer_traffic_patches[0],
+                                                          &dealer_traffic_patches[1],
+                                                          &dealer_traffic_patches[2],
                                                           &sky_road_hook_patches[0],
                                                           &sky_road_hook_patches[1],
                                                           &sky_road_hook_patches[2]};

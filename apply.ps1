@@ -143,10 +143,12 @@ $patches = @{
     'AI/CarLoadingSettings.xml' = ,@('MaxActiveTraffic="18"', "MaxActiveTraffic=""$([Math]::Max(18, [int][Math]::Round(18 * $freeRoam)))""")
   }
 }
-# cockpit camera: set outright, so a value a cockpit FOV mod already changed is fine too; a stock setting leaves that mod's value alone
+# cameras: set outright, so a value a camera mod already changed is fine too; a stock setting leaves that mod's value alone
 $camera = @()
-foreach ($c in @(('FOV', $s.CockpitFOV, 48), ('DefaultOffsetFromSteeringWheelZ', $s.SeatOffsetZ, 0), ('DefaultOffsetFromSteeringWheelY', $s.SeatOffsetY, 0))) {
-  if ([double]$c[1] -ne $c[2]) { $camera += ,@("(?m)^Driver\\$($c[0]) -?[\d.]+(?=\s)", "Driver\$($c[0]) $(Num $c[1])") }
+foreach ($c in @(('Driver\FOV', $s.CockpitFOV, 48), ('Driver\DefaultOffsetFromSteeringWheelZ', $s.SeatOffsetZ, 0), ('Driver\DefaultOffsetFromSteeringWheelY', $s.SeatOffsetY, 0),
+                 ('HoodCam\FOV', $s.HoodFOV, 66), ('BumperHighCam\FOV', $s.BumperFOV, 48), ('FollowLowCam\FOV', $s.ChaseNearFOV, 48.5), ('FollowHighCam\FOV', $s.ChaseFarFOV, 58))) {
+  # a settings.json from before an option has none: stock
+  if ($null -ne $c[1] -and [double]$c[1] -ne $c[2]) { $camera += ,@("(?m)^$([regex]::Escape($c[0])) -?[\d.]+(?=\s)", "$($c[0]) $(Num $c[1])") }
 }
 if ($camera.Count) { $patches['Camera.zip']['CameraSettings.ini'] = $camera }
 if (-not $s.RaceTraffic) {

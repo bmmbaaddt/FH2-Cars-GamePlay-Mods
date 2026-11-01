@@ -4,11 +4,14 @@
     <TargetFramework>net48</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <LangVersion>latest</LangVersion>
-    <AssemblyName>FH2 Mods Overlay</AssemblyName>
+    <AssemblyName>FH2 Mods</AssemblyName>
     <RootNamespace>FH2Overlay</RootNamespace>
-    <Version>1.4.0</Version>
-    <Product>FH2 Mods Overlay</Product>
+    <Version>2.0.0</Version>
+    <Product>FH2 Mods</Product>
     <PlatformTarget>x64</PlatformTarget>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System.Web.Extensions" />
+  </ItemGroup>
 </Project>

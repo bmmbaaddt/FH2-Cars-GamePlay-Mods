@@ -54,6 +54,49 @@ if '--random' in sys.argv:   # a random car from the garage, for the window to s
     if not rows: sys.exit('no save found: play the game once first')
     print(random.choice(rows)[0]); sys.exit()
 
+if '--curve' in sys.argv:   # the engine fitted to a car (newest save, else stock) and its full-throttle torque curve, for the overlay's power graph; reads only
+    car = int(sys.argv[-1])
+    game = next((p for p in (os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(DB))), f, 'stripped', 'gamedbRC.slt') for f in ('mediaoverride', 'mediapc')) if os.path.exists(p)), DB)
+    g = sqlite3.connect(f'file:{game}?mode=ro', uri=True)
+    fitted = [e for c, e, *_ in save_garage() if c == car and e != -1]   # ponytail: two of the same car in the garage: the first one's engine
+    engine = fitted and g.execute('select EngineID from List_UpgradeEngine where Id=?', (fitted[0],)).fetchone()
+    engine = engine[0] if engine else g.execute('select EngineID from List_UpgradeEngine where Ordinal=? and IsStock=1', (car,)).fetchone()[0]
+    name, torque, kw = g.execute('select EngineName, EngineGraphingMaxTorque, EngineGraphingMaxPower from Data_Engine where EngineID=?', (engine,)).fetchone()
+    redline, top, curve = g.execute('select RedlineRPM, TorqueCurveMaxRPM, TorqueCurveFullThrottleID from List_UpgradeEngineCamshaft where EngineID=? order by IsStock desc limit 1', (engine,)).fetchone()
+    row = g.execute('select * from List_TorqueCurve where TorqueCurveID=?', (curve,)).fetchone()
+    values = row[3:3 + row[2] - 1]   # evenly spaced from 0 to TorqueCurveMaxRPM; the last entry is the over-rev drag
+    print(json.dumps({'engine': name, 'nm': torque, 'hp': kw * 1.341, 'redline': redline, 'max': top * (len(values) - 1) / len(values), 'torque': values}))
+    sys.exit()
+
+if '--check' in sys.argv:   # for Diagnose: does every part the garage has fitted exist, and belong to the car's engine? reads only
+    game = next((p for p in (os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(DB))), f, 'stripped', 'gamedbRC.slt') for f in ('mediaoverride', 'mediapc')) if os.path.exists(p)), DB)
+    g = sqlite3.connect(f'file:{game}?mode=ro', uri=True)
+    cols = {r[1] for r in save_query("select * from pragma_table_info('Career_Garage')")}
+    engine_parts = {'Camshaft': 'Camshaft', 'Valves': 'Valves', 'Displacement': 'Displacement', 'PistonsCompression': 'PistonsCompression', 'FuelSystem': 'FuelSystem',
+                    'Ignition': 'Ignition', 'Exhaust': 'Exhaust', 'Intake': 'Intake', 'Flywheel': 'Flywheel', 'Manifold': 'Manifold', 'RestrictorPlate': 'RestrictorPlate',
+                    'OilCooling': 'OilCooling', 'SingleTurbo': 'TurboSingle', 'TwinTurbo': 'TurboTwin', 'QuadTurbo': 'TurboQuad', 'SuperchargerCSC': 'CSC', 'SuperchargerDSC': 'DSC', 'Intercooler': 'Intercooler'}
+    others = {'Drivetrain': 'List_UpgradeDrivetrain', 'TireCompound': 'List_UpgradeTireCompound', 'WeightReduction': 'List_UpgradeCarBodyWeight', 'Transmission': 'List_UpgradeDrivetrainTransmission'}
+    parts = [c for c in engine_parts if c in cols] + [c for c in others if c in cols]
+    rows = save_query('select Id, CarId, Engine, ' + ', '.join(f'"{c}"' for c in parts) + ' from Career_Garage')
+    if not rows: sys.exit('no save found')
+    problems = []
+    for gid, car, engine_row, *fitted in rows:
+        name = f'garage car {gid} (car id {car})'
+        if g.execute('select 1 from Data_Car where Id=?', (car,)).fetchone() is None: problems.append(f'{name}: the car is not in the game database (car pack removed?)'); continue
+        e = g.execute('select EngineID from List_UpgradeEngine where ' + ('Id=?' if engine_row != -1 else 'Ordinal=? and IsStock=1'), (engine_row if engine_row != -1 else car,)).fetchone()
+        if e is None and engine_row == -1 and g.execute('select 1 from List_UpgradeMotor where Ordinal=?', (car,)).fetchone(): continue   # electric: a motor, no engine
+        if e is None: problems.append(f'{name}: engine row {engine_row} is missing'); continue
+        for part, pid in zip(parts, fitted):
+            if pid == -1: continue
+            if part in engine_parts:
+                r = g.execute(f'select EngineID from List_UpgradeEngine{engine_parts[part]} where Id=?', (pid,)).fetchone()
+                if r is None: problems.append(f'{name}: {part} {pid} is missing')
+                elif r[0] != e[0]: problems.append(f'{name}: {part} {pid} belongs to engine {r[0]}, the engine row {engine_row} is engine {e[0]} (the game crashes loading this car)')
+            elif g.execute(f'select 1 from {others[part]} where Id=?', (pid,)).fetchone() is None: problems.append(f'{name}: {part} {pid} is missing')
+    print(f'{len(rows)} garage cars checked against {game}')
+    print('\n'.join(problems) if problems else 'every fitted part exists and matches its engine')
+    sys.exit()
+
 if '--list' not in sys.argv:
     running = subprocess.run(['powershell', '-NoProfile', '-Command', '(Get-Process azimuth -ErrorAction SilentlyContinue).Path'], capture_output=True, text=True).stdout
     if any(os.path.normcase(p).startswith(os.path.normcase(ROOT + os.sep)) for p in running.splitlines()): sys.exit('close the game first')
@@ -163,7 +206,12 @@ for n, (cid, m) in enumerate(cars.items()):
             db.execute(f'update {t} set MaxScale=MaxScale*?, PowerMaxScale=PowerMaxScale*0.7, MinScale=max(MinScale, 1.0) where EngineID=?', (m['turbo'], engine))
         boosted.add(engine)
     # rev limit: the redline and the torque curve's rpm range stretch together, so the engine pulls to the new limit
-    redline = min(m.get('redline', 1), 2)   # the game crashes above x2
+    # x2 is always fine; past that only while the engine stays within the rpm the game's own engines reach
+    # (10500 redline, 12000 torque curve): x2.5 on a 7000 rpm engine crashed the game, a 2200 rpm diesel takes x4.
+    # A car mod's "rpm_cap" raises that redline ceiling for its engine, at the player's own risk.
+    cap = m.get('rpm_cap', 10500)
+    top = engine is not None and db.execute('select max(RedlineRPM), max(TorqueCurveMaxRPM) from List_UpgradeEngineCamshaft where EngineID=?', (engine,)).fetchone()
+    redline = min(m.get('redline', 1), max(2, min(cap / top[0], cap * 12000 / 10500 / top[1], 20000 / top[1])) if top and top[0] else 2)
     if redline != 1 and engine is not None and engine not in revved:
         db.execute('update List_UpgradeEngineCamshaft set RedlineRPM=RedlineRPM*?, TorqueCurveMaxRPM=TorqueCurveMaxRPM*? where EngineID=?', (redline, redline, engine))
         revved.add(engine)
@@ -213,18 +261,49 @@ if settings.get('PackEngineParts', 0) > 0:   # a level 4 of every engine part: t
             insert_row(t, r)
         menu_entry(enum, 4, f'Race+ {part}', 'Extra FH2 Mods engine part; the original upgrades are kept.')
     packs.append(f'engine parts +{settings["PackEngineParts"]:g}%')
+ASPIRATION = {'Natural': '', 'Turbo': ' Turbo', 'Twin Turbo': ' TT', 'Quad Turbo': ' Quad Turbo', 'DSC': ' DSC', 'CSC': ' CSC'}
+def engine_name(disp, config, cylinders, aspiration, diesel, media, old):
+    """'4.0L V12 TT - 330P4 '67': size, layout, aspiration and the car the engine comes from (its media name
+    without the make code); 134 of the game's engines have no name and many others are developer notes"""
+    layout = f'{cylinders}-Rotor' if config == 'Rotary' else f'{config}{cylinders}'
+    boost = ' Quad Turbo' if 'Quad' in old else ASPIRATION.get(aspiration, '')   # the database calls the Veyron's W16 twin turbo
+    if diesel: boost = ' TD' if boost else ' Diesel'
+    parts = (media or '').split('_')[1:]
+    year = f" '{parts.pop()[-2:]}" if parts and parts[-1].isdigit() else ''
+    return f'{disp / 1000:.1f}L {layout}{boost} - {" ".join(parts)}{year}'.strip(' -')
 if settings.get('PackEngineSwaps'):   # every engine fits every car: new List_UpgradeEngine levels after the car's own
     db.execute('create index if not exists FH2Mods_Swaps on List_UpgradeEngine(Ordinal, EngineID)')
+    names = db.execute("""select e.EngineID, (select min(Disp) from List_UpgradeEngineDisplacement d where d.EngineID=e.EngineID and d.IsStock=1),
+                                 f.EngineConfig, y.Number, a.Aspiration, e.Diesel, e.MediaName, e.EngineName
+                          from Data_Engine e left join List_EngineConfig f on f.ConfigID=e.ConfigID
+                          left join List_Cylinders y on y.CylinderID=e.CylinderID left join List_Aspiration a on a.AspirationID=e.AspirationID_Stock""").fetchall()
+    seen = {}   # some cars have two engines (stock and a stronger one): the second is "(2)"
+    for r in sorted(names):
+        if not (r[1] and r[2]): continue
+        name = engine_name(*r[1:]); seen[name] = seen.get(name, 0) + 1
+        db.execute('update Data_Engine set EngineName=? where EngineID=?', (name + (f' ({seen[name]})' if seen[name] > 1 else ''), r[0]))
     db.execute("""with car as (select u.Ordinal, max(u.Level) top,
                                       (select e.[EngineMass-kg] from List_UpgradeEngine s join Data_Engine e on e.EngineID=s.EngineID where s.Ordinal=u.Ordinal and s.IsStock=1) mass
                                from List_UpgradeEngine u join Data_Car c on c.Id=u.Ordinal and c.IsDrivable=1
                                group by u.Ordinal having sum(u.IsStock=1) = 1),
                   missing as (select car.Ordinal, car.top, car.mass, e.EngineID, e.[EngineMass-kg] m,
-                                     row_number() over (partition by car.Ordinal order by e.EngineID) rn
+                                     row_number() over (partition by car.Ordinal order by d.disp, e.EngineGraphingMaxPower, e.EngineID) rn
                               from car cross join Data_Engine e
+                              left join (select EngineID, min(Disp) disp from List_UpgradeEngineDisplacement where IsStock=1 group by EngineID) d on d.EngineID=e.EngineID
                               where not exists (select 1 from List_UpgradeEngine x where x.Ordinal=car.Ordinal and x.EngineID=e.EngineID))
                   insert into List_UpgradeEngine (Id, Ordinal, Level, EngineID, IsStock, ManufacturerID, Price, MassDiff, WeightDistDiff, DragScale, WindInstabilityScale)
                   select Ordinal * 1000 + top + rn, Ordinal, top + rn, EngineID, 0, 255, 1000, m - mass, 0, 1, 1 from missing where top + rn < 1000""")
+    # the save keeps a fitted swap as its row Id, so when the list order changes (it was by engine id before it was by size)
+    # that Id must still be the engine the car has: its camshaft tells which. Otherwise the car's parts belong to another
+    # engine and the game crashes loading it. The two rows trade engines, so only the list order moves.
+    for car, eid, cam in save_query('select CarId, Engine, Camshaft from Career_Garage where Engine != -1 and Camshaft != -1'):
+        want = val('select EngineID from List_UpgradeEngineCamshaft where Id=?', cam)
+        have = val('select EngineID from List_UpgradeEngine where Id=? and IsStock=0 and ManufacturerID=255', eid)
+        other = val('select Id from List_UpgradeEngine where Ordinal=? and EngineID=? and IsStock=0 and ManufacturerID=255', car, want)
+        if None in (want, have, other) or want == have: continue
+        mass = {i: val('select MassDiff from List_UpgradeEngine where Id=?', i) for i in (eid, other)}
+        db.execute('update List_UpgradeEngine set EngineID=?, MassDiff=? where Id=?', (want, mass[other], eid))
+        db.execute('update List_UpgradeEngine set EngineID=?, MassDiff=? where Id=?', (have, mass[eid], other))
     packs.append('engine swaps')
 if settings.get('PackTrafficCars'):   # traffic and AI-only cars in the Autoshow, in their make's usual bucket
     db.execute("""insert into Data_Car_Buckets (CarId, CarBucket, BucketHero)
@@ -233,16 +312,68 @@ if settings.get('PackTrafficCars'):   # traffic and AI-only cars in the Autoshow
         from Data_Car c join TrafficCars t on t.CarId=c.Id
         where not exists (select 1 from Data_Car_Buckets b where b.CarId=c.Id)
           and exists (select 1 from List_UpgradeEngine e where e.Ordinal=c.Id and e.IsStock=1)""")
-    # the Autoshow lists the game's Drivable_Data_Car view, which drops every car in TrafficCars; traffic still spawns
-    # them from AI\CarLoadingSettings.xml, so taking them out of the table only makes them buyable
-    db.execute('delete from TrafficCars where CarId in (select CarId from Data_Car_Buckets)')
+    # the Autoshow lists the game's Drivable_Data_Car view, which drops the cars in TrafficCars; the FH2 Mods
+    # ExtraOptions makes it keep the ones with a bucket. TrafficCars itself stays: free roam reloads traffic
+    # from it after fast travel, and an emptied table hung the game there.
     packs.append('traffic cars for sale')
 if settings.get('PackFreeCars'):
     db.execute('update Data_Car set BaseCost=1')
     packs.append('free cars')
+if settings.get('PackUltraTires', 0) > 0:   # a level 6 tire for every car (after rally's 5): race slicks with this much more grip
+    more = 1 + settings['PackUltraTires'] / 100
+    row = dict(zip(tire_cols, db.execute('select * from List_TireCompound where TireCompoundID=8').fetchone()))   # 8_RacingSlick
+    row.update(TireCompoundID=FIRST_NEW_TIRE - 1, DisplayName=f'{FIRST_NEW_TIRE - 1}_Ultra')   # 99: the per-car grip copies start at 100
+    for c in ('TorqueFreeLatFrictionScale', 'TorqueFreeLongFrictionScaleBrake', 'TorqueFreeLongFrictionScaleAccel0', 'TorqueFreeLongFrictionScaleAccel1'): row[c] *= more
+    insert_row('List_TireCompound', row)
+    # with the car's own best road tire model, so every car has the graphics for it
+    db.execute("""insert or ignore into List_UpgradeTireCompound (Id, Ordinal, Level, IsStock, TireCompoundID, ManufacturerID, Price, MassDiff, DragScale, WindInstabilityScale, RequiresGraphics, TireModelName)
+                  select Ordinal * 1000 + 6, Ordinal, 6, 0, ?, ManufacturerID, 15000, MassDiff, DragScale, WindInstabilityScale, RequiresGraphics, TireModelName
+                  from List_UpgradeTireCompound t where Level=(select max(Level) from List_UpgradeTireCompound x where x.Ordinal=t.Ordinal and x.Level <= 3)""", (FIRST_NEW_TIRE - 1,))
+    menu_entry(8, 6, 'Ultra Grip', 'FH2 Mods tire: race slicks with extra grip.')
+    packs.append(f'ultra grip tires +{settings["PackUltraTires"]:g}%')
+if settings.get('PackWeight', 0) > 0:   # a level 4 weight reduction: this much lighter than stock
+    lighter = 1 - min(settings['PackWeight'], 60) / 100
+    db.execute("""insert or ignore into List_UpgradeCarBodyWeight (Id, CarBodyId, Level, IsStock, ManufacturerID, Mass, Price, PartsStringID, InitialMass, CMHeight, CMBackFront, CMLeftRight, BlockDimX, BlockDimY, BlockDimZ, RequiresGraphics)
+                  select CarBodyId + 4, CarBodyId, 4, 0, ManufacturerID, min(Mass, InitialMass * ?), 20000, PartsStringID, InitialMass, CMHeight, CMBackFront, CMLeftRight, BlockDimX, BlockDimY, BlockDimZ, RequiresGraphics
+                  from List_UpgradeCarBodyWeight w where Level=(select max(Level) from List_UpgradeCarBodyWeight x where x.CarBodyId=w.CarBodyId) and Level < 4""", (lighter,))
+    menu_entry(40, 4, 'Race+ Weight Reduction', 'FH2 Mods weight reduction; the original upgrades are kept.')
+    packs.append(f'weight reduction -{settings["PackWeight"]:g}%')
+if settings.get('PackDrivetrains'):   # the game's own AWD (2102) and RWD (2170) conversions for the cars without them
+    # powertrain: 0 FWD, 1-3 RWD with the engine front / mid / rear, 4-6 AWD the same
+    for n, drivetrain, kinds, kind in ((8, 2102, (4, 5, 6), 'max(1, s.PowertrainId) + 3'), (9, 2170, (1, 2, 3), 'max(1, s.PowertrainId - 3)')):
+        db.execute(f"""insert or ignore into List_UpgradeDrivetrain (Id, Ordinal, DrivetrainID, PowertrainId, MassDiff, WeightDistDiff, Level, ManufacturerId, Price, IsStock)
+                      select s.Ordinal * 1000 + ?, s.Ordinal, ?, {kind}, 0, 0,
+                             (select max(Level) + 1 from List_UpgradeDrivetrain x where x.Ordinal=s.Ordinal), s.ManufacturerId, 5000, 0
+                      from List_UpgradeDrivetrain s where s.IsStock=1 and s.PowertrainId not in {kinds}
+                        and not exists (select 1 from List_UpgradeDrivetrain x where x.Ordinal=s.Ordinal and x.PowertrainId in {kinds})""", (n, drivetrain))
+    packs.append('drivetrain swaps')
+if settings.get('PackTurbos'):   # a twin turbo and intercooler for the engines with no forced induction option, from the nearest-sized one that has them
+    sizes = dict(db.execute('select EngineID, min(Disp) from List_UpgradeEngineDisplacement where IsStock=1 group by EngineID').fetchall())
+    # only a naturally aspirated donor's conversion: a factory turbo's rows are stock parts, which made the game take the
+    # engine for turbocharged while the save says it isn't, and it crashed loading the car
+    donors = [e for (e,) in db.execute("""select distinct t.EngineID from List_UpgradeEngineTurboTwin t join Data_Engine e on e.EngineID=t.EngineID and e.AspirationID_Stock=1
+                                          where not exists (select 1 from List_UpgradeEngineTurboTwin s where s.EngineID=t.EngineID and s.IsStock=1)
+                                            and not exists (select 1 from List_UpgradeEngineIntercooler s where s.EngineID=t.EngineID and s.IsStock=1)
+                                            and exists (select 1 from List_UpgradeEngineIntercooler i where i.EngineID=t.EngineID)""").fetchall() if e in sizes]
+    bare = db.execute(' '.join(['select EngineID from Data_Engine e where 1'] + [f'and not exists (select 1 from List_UpgradeEngine{t} t where t.EngineID=e.EngineID)'
+                                                                             for t in ('TurboSingle', 'TurboTwin', 'TurboQuad', 'DSC', 'CSC')])).fetchall()
+    for (engine,) in bare:
+        if engine not in sizes: continue
+        donor = min(donors, key=lambda e: abs(sizes[e] - sizes[engine]))
+        for t in ('List_UpgradeEngineTurboTwin', 'List_UpgradeEngineIntercooler'):
+            cols = [c[1] for c in db.execute(f'pragma table_info("{t}")')]
+            for r in db.execute(f'select * from "{t}" where EngineID=?', (donor,)).fetchall():
+                r = dict(zip(cols, r)); r.update(Id=engine * 1000 + r["Level"], EngineID=engine, IsStock=0); insert_row(t, r)
+    packs.append('turbos for every engine')
+if settings.get('PackFreeParts'):   # every upgrade and engine swap costs 1 CR
+    for (t,) in db.execute("select name from sqlite_master where type='table' and name like 'List_Upgrade%'").fetchall():
+        if 'Price' in [c[1] for c in db.execute(f'pragma table_info("{t}")')]: db.execute(f'update "{t}" set Price=min(Price, 1)')
+    packs.append('free upgrades')
 # a part the garage owns or has fitted must still exist, or the save would point at nothing
-tables = {'Engine': 'List_UpgradeEngine', **{p: f'List_UpgradeEngine{p}' for p in PART_ENUMS}}
-by_enum = {0: 'List_UpgradeEngine', **{e: f'List_UpgradeEngine{p}' for p, e in PART_ENUMS.items()}}
+OTHER_PARTS = {'Drivetrain': (1, 'List_UpgradeDrivetrain'), 'TireCompound': (8, 'List_UpgradeTireCompound'),
+               'WeightReduction': (40, 'List_UpgradeCarBodyWeight'), 'TwinTurbo': (25, 'List_UpgradeEngineTurboTwin')}
+tables = {'Engine': 'List_UpgradeEngine', **{p: f'List_UpgradeEngine{p}' for p in PART_ENUMS}, **{c: t for c, (e, t) in OTHER_PARTS.items()}}
+by_enum = {0: 'List_UpgradeEngine', **{e: f'List_UpgradeEngine{p}' for p, e in PART_ENUMS.items()}, **dict(OTHER_PARTS.values())}
 used = [(t, car, pid) for c, t in tables.items() for car, pid in save_query(f'select CarId, "{c}" from Career_Garage where "{c}" != -1')]
 used += [(by_enum[e], car, pid) for car, e, pid in save_query('select g.CarId, p.PartEnum, p.PartId from Career_PurchasedParts p join Career_Garage g on g.Id=p.GarageId') if e in by_enum]
 gone = sorted({(t, car, pid) for t, car, pid in used if val(f'select 1 from "{t}" where Id=?', pid) is None and val(f'select 1 from prev."{t}" where Id=?', pid) is not None})

@@ -1,5 +1,6 @@
-﻿# Read-only check for "Apply failed": compares this PC's game files and the tool's backups with fingerprints of the
-# genuine FH2 1.0.0.64 files, and lists folders, versions and settings. Changes nothing. Writes diagnose.txt here.
+﻿# Read-only check for problems: compares this PC's game files and the tool's backups with fingerprints of the genuine
+# FH2 1.0.0.64 files, lists folders, versions and settings, checks the garage against the game database and shows the
+# last crashes. Changes nothing. Writes diagnose.txt here.
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $report = New-Object Collections.Generic.List[string]
 function Say($text, $color = 'Gray') { $report.Add($text); Write-Host $text -ForegroundColor $color }
@@ -127,6 +128,39 @@ foreach ($o in $others) {
   $oBackup = if (Test-Path "$o\backup_original\media") { 'yes, created ' + (Get-Item "$o\backup_original\media").CreationTime.ToString('yyyy-MM-dd HH:mm') } else { 'no' }
   Say "   $o"
   Say "      game folder(s): $oFolders;  FH2 Mods: $(Test-Path "$o\FH2 Mods");  backup_original: $oBackup"
+}
+
+# 2.0: the tool itself, its settings, the garage against the game database, and the last crashes
+Say ''
+Say 'FH2 Mods:' 'White'
+$tool = Join-Path $PSScriptRoot 'FH2 Mods.exe'
+Say "   FH2 Mods.exe: $(if (Test-Path $tool) { 'version ' + (Get-Item $tool).VersionInfo.ProductVersion } else { 'MISSING (extract the whole zip)' })"
+$leftovers = @('FH2 Mods.bat', 'FH2 Mods.ps1', 'FH2 Mods Overlay.exe') | Where-Object { Test-Path (Join-Path $PSScriptRoot $_) }
+if ($leftovers) { Say "   left from 1.x: $($leftovers -join ', ') (FH2 Mods.exe removes them when it starts)" 'Yellow' }
+$running = @(Get-Process azimuth, 'FH2 Mods', 'FH2 Mods Overlay' -ErrorAction SilentlyContinue | ForEach-Object { "$($_.Name) ($(try { $_.Path } catch { '?' }))" })
+Say "   running now: $(if ($running) { $running -join ', ' } else { 'nothing' })"
+foreach ($f in 'settings.json', 'cars.json') {
+  $p = Join-Path $PSScriptRoot $f
+  $text = if (Test-Path $p) { ([IO.File]::ReadAllText($p) -replace '\s+', ' ').Trim() } else { 'MISSING' }
+  Say "   ${f}: $text"
+}
+Say "   overlay.ini: $(if (Test-Path (Join-Path $PSScriptRoot 'overlay.ini')) { 'found' } else { 'none yet (made when the overlay first saves)' })"
+if ($py) {
+  $carPower = Join-Path $PSScriptRoot 'car_power.py'
+  $list = & python -I $carPower --list 2>&1
+  Say "   car list (car_power.py --list): $(try { "$((($list -join '') | ConvertFrom-Json).Count) cars" } catch { 'FAILED: ' + ($list | Select-Object -Last 1) })" $(if ($LASTEXITCODE) { 'Red' } else { 'Gray' })
+  Say '   garage check (car_power.py --check; a part that belongs to another engine crashes the game when that car loads):'
+  & python -I $carPower --check 2>&1 | ForEach-Object { Say "      $_" $(if ("$_" -match 'crashes|missing') { 'Red' } else { 'Gray' }) }
+}
+$eoLog = Join-Path $root 'FH2_ExtraOptions.log'
+if (Test-Path $eoLog) { Say 'FH2_ExtraOptions.log (last 8 lines):' 'White'; Get-Content $eoLog -Tail 8 | ForEach-Object { Say "   $_" } }
+$mods = Join-Path $root 'mods'
+if (Test-Path $mods) { Say "mods folder: $((Get-ChildItem $mods | ForEach-Object Name) -join ', ')" }
+$azLog = Join-Path $root 'data\logs\azimuth.log'
+if (Test-Path $azLog) {
+  $log = Get-Content $azLog
+  Say 'Azimuth log, last sessions and crashes:' 'White'
+  $log | Where-Object { $_ -match 'session .* began|CRASHED|session ended|graphics watchdog' } | Select-Object -Last 10 | ForEach-Object { Say "   $($_.Substring(0, [Math]::Min(300, $_.Length)))" $(if ($_ -match 'CRASHED') { 'Red' } else { 'Gray' }) }
 }
 
 Say ''

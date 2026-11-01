@@ -43,9 +43,10 @@ namespace FH2Overlay
         // Timers and HUD
         public bool Kmh = false;
         public bool ShowSpeedo = true, ShowNitrous = true, ShowStatus = true, ShowTimer = true, ShowShiftLight = true, ShowStats = true, ShowPedals = false;
+        public bool ShowGMeter = false, ShowPowerGraph = false;
         public bool DragTree = false, ProTree = false;
         public float HudScale = 1;
-        public int SpeedoX = -1, SpeedoY = -1, CardX = -1, CardY = -1, PedalsX = -1, PedalsY = -1;   // -1 = default corner
+        public int SpeedoX = -1, SpeedoY = -1, CardX = -1, CardY = -1, PedalsX = -1, PedalsY = -1, TeleX = -1, TeleY = -1;   // -1 = default corner
         public string Accent = "#22D3EE";
         public int MenuOpacity = 94;
         // Game modes
@@ -78,7 +79,7 @@ namespace FH2Overlay
 
         public void Save()
         {
-            var lines = new List<string> { "; FH2 Mods Overlay settings. Delete this file to go back to the defaults." };
+            var lines = new List<string> { "; FH2 Mods overlay settings. Delete this file to go back to the defaults." };
             foreach (var f in typeof(Settings).GetFields(BindingFlags.Public | BindingFlags.Instance).Where(f => f.FieldType != typeof(Dictionary<string, Keys>)))
                 lines.Add(f.Name + "=" + Convert.ToString(f.GetValue(this), CultureInfo.InvariantCulture));
             lines.AddRange(Bind.Select(b => "Key." + b.Key + "=" + b.Value));
@@ -123,6 +124,7 @@ namespace FH2Overlay
             ("Flip", Keys.Back, "flip the car upright"),
             ("Units", Keys.U, "switch mph / km/h"),
             ("GameMode", Keys.F2, "game mode: off, bomb, score, pursuit"),
+            ("Record", Keys.None, "telemetry recording on / off"),
         };
         public static readonly Dictionary<string, Keys> Defaults = All.ToDictionary(a => a.name, a => a.key);
     }

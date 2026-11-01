@@ -21,5 +21,13 @@
     "PackEngineSwaps": false,
     "PackTrafficCars": false,
     "PackFreeCars": false,
-    "StartOverlay": true
+    "PackUltraTires": 0,
+    "PackWeight": 0,
+    "PackDrivetrains": false,
+    "PackTurbos": false,
+    "PackFreeParts": false,
+    "HoodFOV": 66,
+    "BumperFOV": 48,
+    "ChaseNearFOV": 48.5,
+    "ChaseFarFOV": 58
 }

@@ -13,7 +13,7 @@ jobs:
       - name: Build zip
         run: |
           mkdir "FH2 Mods"
-          cp "FH2 Mods.bat" "FH2 Mods.ps1" "FH2 Mods Overlay.exe" README.txt apply.ps1 car_power.py cars.json settings.json Diagnose.bat diagnose.ps1 "FH2 Mods/"
+          cp "FH2 Mods.exe" README.txt apply.ps1 car_power.py cars.json settings.json Diagnose.bat diagnose.ps1 "FH2 Mods/"
           cp LICENSE "FH2 Mods/LICENSE.txt"
           cp -r ExtraOptions "FH2 Mods/"
           zip -r "FH2-Cars-GamePlay-Mods-${GITHUB_REF_NAME}.zip" "FH2 Mods"
@@ -21,7 +21,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" "FH2-Cars-GamePlay-Mods-${GITHUB_REF_NAME}.zip" --title "FH2 Cars & Gameplay Mods ${GITHUB_REF_NAME}" --notes "Extract the zip and put the **FH2 Mods** folder next to azimuth.exe. Requires Python 3 on PATH and **Azimuth 1.0.4**. See the README for setup and keyboard shortcuts.
+          gh release create "$GITHUB_REF_NAME" "FH2-Cars-GamePlay-Mods-${GITHUB_REF_NAME}.zip" --title "FH2 Cars & Gameplay Mods ${GITHUB_REF_NAME}" --notes "Extract the zip and put the **FH2 Mods** folder next to azimuth.exe, then double-click **FH2 Mods.exe**. Requires Python 3 on PATH and **Azimuth 1.0.4**. See the README for setup and keyboard shortcuts.
+
+          **What's new in 2.0**
+          - **One app: FH2 Mods.exe.** The settings window (FH2 Mods.bat) is gone. With the game closed the menu opens on the new **Setup** tab (everything the window had, plus Apply, Apply & Play, Play and Restore originals) and the **Cars** tab; it then stays in the tray and is the overlay in game (Insert). Updating: extract over 1.x; settings.json, cars.json and overlay.ini carry over, and the old FH2 Mods.bat, FH2 Mods.ps1 and FH2 Mods Overlay.exe are removed when FH2 Mods.exe first starts.
+          - **Cars tab:** search for a car or press *The car I'm in*. New **Rev ceiling** (rev limit past 10,500 rpm for one car, up to 20,000; at your own risk). **Export / Import tune** to share a car's setup.
+          - **New packs:** ultra grip tires (a new tire upgrade for every car, extra grip over race slicks), Race+ weight reduction (up to 60% lighter), AWD and RWD conversions for the cars without them, turbos for the 16 engines with no turbo option, free upgrades (1 CR).
+          - **Engine swaps:** every engine has a name (134 had none), the list is sorted by size, and a fitted swap always stays the same engine.
+          - **Camera FOV** for the hood, bumper, near chase and far chase cameras.
+          - **New gauges:** G-force meter and power graph (torque and power curves with your rpm). **Telemetry recording** to CSV.
+          - **Fixed:** the game hung after fast travel with *Traffic and AI cars for sale* on.
+          - **Diagnose** also checks your garage against the game database, lists your settings and shows the last crashes.
 
           **What's new in 1.4**
           - **Azimuth 1.0.4 and ExtraOptions 0.4.4.** Update Azimuth from itch.io first (your saves carry over), then press Apply. 1.0.1 to 1.0.3 work too.

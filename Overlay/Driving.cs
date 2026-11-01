@@ -24,7 +24,7 @@ namespace FH2Overlay
         public readonly Modes Modes;
 
         // switches the menu and the keys share
-        public volatile bool Boost, Drift, Grip, Steer, Limiter, Wheelie, Air, LowGravity, Ufo, Ghost, Cruise;
+        public volatile bool Boost, Drift, Grip, Steer, Limiter, Wheelie, Air, LowGravity, Ufo, Ghost, Cruise, Recording;
         public volatile string Status = "", Error = "";
         public float Tank = 1, SpeedMs, Rpm, RedlineRpm, Throttle, Brake;
         // readouts for the gauges: drift angle and score, g-force (along and across the car), compass, trip
@@ -105,6 +105,7 @@ namespace FH2Overlay
                 else { Cruise = true; CruiseMs = SpeedMs; }
             }
             if (input.Has("Flip")) Flip();
+            if (input.Has("Record")) Recording = !Recording;
 
             // launch: standing (stopped, brakes held, revs held at the launch rpm) or rolling (speed held), then extra power
             long now = Now;
@@ -248,6 +249,7 @@ namespace FH2Overlay
 
             if (input.Has("Teleport")) Teleport();
             Readouts(rows, v, dt, now);
+            Record(now);
             GameModes(input, rows, airborne, now, dt, notes);
             Status = string.Join("  ·  ", notes);
         }
@@ -382,6 +384,29 @@ namespace FH2Overlay
             lastVelocity = v;
             TripMetres += flat * dt; TopMs = Math.Max(TopMs, flat);
         }
+
+        // telemetry to logs	elemetry-<date>.csv next to the overlay, 20 rows a second while driving
+        System.IO.StreamWriter log; long logStart, logNext;
+        public string LogFile = "";
+        void Record(long now)
+        {
+            if (!Recording) { StopRecording(); return; }
+            if (log == null)
+            {
+                string dir = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
+                System.IO.Directory.CreateDirectory(dir);
+                LogFile = System.IO.Path.Combine(dir, $"telemetry-{DateTime.Now:yyyyMMdd-HHmmss}.csv");
+                log = new System.IO.StreamWriter(LogFile);
+                log.WriteLine("seconds,car,speed_kmh,rpm,redline_rpm,throttle,brake,g_long,g_lat,drift_deg,heading_deg,x,y,z");
+                logStart = logNext = now;
+            }
+            if (now < logNext) return;
+            logNext = now + 50;
+            var p = game.Vec(car, Game.Position);
+            log.WriteLine(string.Join(",", new object[] { (now - logStart) / 1000.0, Model, SpeedMs * 3.6f, Rpm, RedlineRpm, Throttle, Brake, GLong, GLat, DriftAngle, Heading, p[0], p[1], p[2] }
+                .Select(x => Convert.ToString(x, CultureInfo.InvariantCulture))));
+        }
+        void StopRecording() { if (log != null) { log.Dispose(); log = null; } }
 
         // ---- game modes: the rules are in Modes; here the game side
         List<(long id, float[] pos, float[] vel)> others = new List<(long, float[], float[])>();
@@ -573,6 +598,6 @@ namespace FH2Overlay
             Release();
         }
 
-        public void Shutdown() { AllOff(); }
+        public void Shutdown() { AllOff(); Recording = false; StopRecording(); }
     }
 }

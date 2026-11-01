@@ -40,6 +40,7 @@ COMMON_SOURCES = [
     "features/world_keys.c",
     "features/random_car.c",
     "features/ghost_traffic.c",
+    "features/dealer_traffic.c",
     "features/sky_road.c",
     "features/local_liveries.c",
     "features/plugins.c",

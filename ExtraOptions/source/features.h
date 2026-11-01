@@ -76,6 +76,7 @@ void random_car_bind(unsigned char *image);
 void random_car_garage_loaded(void *page);
 void random_car_garage_update(void *page);
 extern PatchDefinition ghost_traffic_patches[2];
+extern PatchDefinition dealer_traffic_patches[3];
 extern PatchDefinition sky_road_hook_patches[3];
 void ghost_traffic_prepare_patch(const ModOptions *options);
 void sky_road_prepare_hook(unsigned char *image);

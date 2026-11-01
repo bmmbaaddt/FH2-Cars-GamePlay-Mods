@@ -1,5 +1,6 @@
-// The on-screen gauges: three small click-through, see-through windows over the game's picture (per-pixel alpha, so
-// edges stay smooth): the cluster (speed, rev bar, nitrous, readouts), the status and timer card, and the gas / brake graph. In move mode (from the
+// The on-screen gauges: small click-through, see-through windows over the game's picture (per-pixel alpha, so edges stay
+// smooth): the cluster (speed, rev bar, nitrous, readouts), the status and timer card, the gas / brake graph, and the
+// g-force meter with the power graph. In move mode (from the
 // menu) they take the mouse: drag one to move it, scroll on it to resize everything.
 using System;
 using System.Collections.Generic;
@@ -80,7 +81,9 @@ namespace FH2Overlay
         readonly Settings s;
         readonly Func<Driving> driving;
         readonly Runs runs;
-        readonly Layer speedo = new Layer(), card = new Layer(), pedals = new Layer();
+        readonly Layer speedo = new Layer(), card = new Layer(), pedals = new Layer(), tele = new Layer();
+        readonly List<PointF> gTrail = new List<PointF>();   // the last second of g-force (lateral, longitudinal)
+        Dictionary<string, object> curve; int curveModel; volatile bool curveLoading;   // the power graph's engine, from car_power.py --curve
         readonly float[] gas = new float[150], brake = new float[150]; int sample;   // 5 s at the 30 frames a second below
         public Func<IntPtr> GameWindow = () => IntPtr.Zero;
         public Func<bool> MenuOpen = () => false;
@@ -100,18 +103,19 @@ namespace FH2Overlay
             speedo.Dragged = (x, y) => { s.SpeedoX = x - origin.X; s.SpeedoY = y - origin.Y; };
             card.Dragged = (x, y) => { s.CardX = x - origin.X; s.CardY = y - origin.Y; };
             pedals.Dragged = (x, y) => { s.PedalsX = x - origin.X; s.PedalsY = y - origin.Y; };
-            speedo.Scrolled = card.Scrolled = pedals.Scrolled = d => s.HudScale = V.Clamp(s.HudScale + d * 0.1f, 0.5f, 3);
+            tele.Dragged = (x, y) => { s.TeleX = x - origin.X; s.TeleY = y - origin.Y; };
+            speedo.Scrolled = card.Scrolled = pedals.Scrolled = tele.Scrolled = d => s.HudScale = V.Clamp(s.HudScale + d * 0.1f, 0.5f, 3);
             var t = new Timer { Interval = 33 }; t.Tick += (o, e) => Frame(); t.Start();
         }
 
-        public void SetMoving(bool on) { Moving = on; speedo.SetMoving(on); card.SetMoving(on); pedals.SetMoving(on); if (!on) s.Save(); }
+        public void SetMoving(bool on) { Moving = on; speedo.SetMoving(on); card.SetMoving(on); pedals.SetMoving(on); tele.SetMoving(on); if (!on) s.Save(); }
 
         void Frame()
         {
             var game = GameWindow();
             bool show = game != IntPtr.Zero && !IsIconic(game) && (GetForegroundWindow() == game || MenuOpen() || Moving)
                         && GetClientRect(game, out RECT r) && r.R >= 200 && r.B >= 150;
-            if (!show) { speedo.Hide(); card.Hide(); pedals.Hide(); return; }
+            if (!show) { speedo.Hide(); card.Hide(); pedals.Hide(); tele.Hide(); return; }
             GetClientRect(game, out RECT c);
             var at = new PT(); ClientToScreen(game, ref at); origin = new Point(at.X, at.Y);
             int w = c.R, h = c.B;
@@ -133,6 +137,23 @@ namespace FH2Overlay
             px = Math.Max(0, Math.Min(w - pw, px)); py = Math.Max(0, Math.Min(h - ph, py));
             if (s.ShowPedals && (Moving || d != null && d.InCar)) pedals.Render(origin.X + px, origin.Y + py, pw, ph, g => Pedals(g, pw, ph, k));
             else pedals.Hide();
+
+            // the g-force meter and the power graph, side by side: bottom right unless moved
+            if (d != null && d.InCar) { gTrail.Add(new PointF(d.GLat, d.GLong)); if (gTrail.Count > 30) gTrail.RemoveAt(0); }
+            if (s.ShowPowerGraph && d != null && d.Model > 0 && d.Model != curveModel && !curveLoading)
+            {
+                int model = d.Model; curveLoading = true;
+                System.Threading.Tasks.Task.Run(() => { try { curve = Setup.Curve(model); } catch { curve = null; } curveModel = model; curveLoading = false; });
+            }
+            int gw = s.ShowGMeter ? (int)(120 * k) : 0, cw2 = s.ShowPowerGraph ? (int)(300 * k) : 0, tw = gw + cw2, th = (int)(120 * k);
+            int tx = s.TeleX >= 0 ? s.TeleX : w - tw - (int)(30 * k), ty = s.TeleY >= 0 ? s.TeleY : h - th - (int)(28 * k);
+            tx = Math.Max(0, Math.Min(w - tw, tx)); ty = Math.Max(0, Math.Min(h - th, ty));
+            if (tw > 0 && (Moving || d != null && d.InCar)) tele.Render(origin.X + tx, origin.Y + ty, tw, th, g =>
+            {
+                if (gw > 0) GMeter(g, gw, th, k);
+                if (cw2 > 0) { g.TranslateTransform(gw, 0); PowerGraph(g, d, cw2, th, k); g.ResetTransform(); }
+            });
+            else tele.Hide();
 
             // the card: top right unless moved
             List<(string text, Color color, float size)> lines;
@@ -272,6 +293,62 @@ namespace FH2Overlay
                     using (var off = new SolidBrush(Off)) g.FillRectangle(off, bx, plot.Y, bw, bh);
                     using (var b = new SolidBrush(color)) { g.FillRectangle(b, bx, plot.Y + bh * (1 - v), bw, bh * v); g.DrawString($"{v * 100:0}", f, b, bx - 4 * k, plot.Y + bh + 1 * k); }
                 }
+        }
+
+        // rings at 0.5, 1 and 1.5 g; the dot shows the push you feel: back (down) when speeding up, forward when braking,
+        // to the left in a right turn
+        void GMeter(Graphics g, int w, int h, float k)
+        {
+            using (var p = Round(new Rectangle(0, 0, w - 1, h - 1), 6 * k)) using (var b = new SolidBrush(Panel)) g.FillPath(b, p);
+            float cx = w / 2f, cy = h / 2f + 6 * k, r = Math.Min(w, h) / 2f - 16 * k;
+            using (var ring = new Pen(Off, 1))
+            {
+                for (int i = 1; i <= 3; i++) g.DrawEllipse(ring, cx - r * i / 3, cy - r * i / 3, r * 2 * i / 3, r * 2 * i / 3);
+                g.DrawLine(ring, cx - r, cy, cx + r, cy); g.DrawLine(ring, cx, cy - r, cx, cy + r);
+            }
+            PointF At(PointF v) => new PointF(cx - V.Clamp(v.X / 1.5f, -1, 1) * r, cy + V.Clamp(v.Y / 1.5f, -1, 1) * r);
+            for (int i = 1; i < gTrail.Count; i++)
+                using (var pen = new Pen(Color.FromArgb(40 + 160 * i / gTrail.Count, Accent), 2 * k)) g.DrawLine(pen, At(gTrail[i - 1]), At(gTrail[i]));
+            if (gTrail.Count > 0)
+            {
+                var now = gTrail[gTrail.Count - 1]; var dot = At(now);
+                using (var b = new SolidBrush(Ink)) g.FillEllipse(b, dot.X - 4 * k, dot.Y - 4 * k, 8 * k, 8 * k);
+                using (var f = new Font("Bahnschrift", 10 * k, GraphicsUnit.Pixel)) using (var b = new SolidBrush(Dim))
+                    g.DrawString($"{Math.Sqrt(now.X * now.X + now.Y * now.Y):0.00} g", f, b, 6 * k, 3 * k);
+            }
+        }
+
+        // the engine's full-throttle torque (accent) and power (amber) against rpm, the redline, and a marker at the rpm now
+        void PowerGraph(Graphics g, Driving d, int w, int h, float k)
+        {
+            using (var p = Round(new Rectangle(0, 0, w - 1, h - 1), 6 * k)) using (var b = new SolidBrush(Panel)) g.FillPath(b, p);
+            using (var f = new Font("Bahnschrift", 10 * k, GraphicsUnit.Pixel)) using (var dim = new SolidBrush(Dim)) using (var ink = new SolidBrush(Ink))
+            {
+                var c = curve;
+                if (c == null || curveModel != d?.Model) { g.DrawString(curveLoading ? "reading the engine..." : Moving ? "power graph" : "no engine data for this car", f, dim, 8 * k, 6 * k); return; }
+                var torque = ((System.Collections.IEnumerable)c["torque"]).Cast<object>().Select(Convert.ToSingle).ToArray();
+                float max = Convert.ToSingle(c["max"]), redline = Convert.ToSingle(c["redline"]), top = Math.Max(max, redline);
+                var plot = new RectangleF(8 * k, 22 * k, w - 16 * k, h - 30 * k);
+                float X(float rpm) => plot.X + plot.Width * rpm / top;
+                var power = torque.Select((t, i) => t * i * max / (torque.Length - 1)).ToArray();
+                float tMax = torque.Max(), pMax = Math.Max(1e-3f, power.Where((x, i) => i * max / (torque.Length - 1) <= redline).DefaultIfEmpty(power.Max()).Max());
+                g.DrawString($"{c["engine"]}", f, ink, new RectangleF(8 * k, 4 * k, w * 0.6f, 14 * k), new StringFormat { Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap });
+                g.DrawString($"{Convert.ToSingle(c["hp"]):0} hp  {Convert.ToSingle(c["nm"]):0} Nm", f, dim, w * 0.62f, 4 * k);
+                using (var grid = new Pen(Off, 1)) g.DrawRectangle(grid, plot.X, plot.Y, plot.Width, plot.Height);
+                foreach (var (values, peak, color) in new[] { (torque, tMax, Accent), (power, pMax, Amber) })
+                {
+                    var pts = values.Select((v, i) => new PointF(X(i * max / (values.Length - 1)), plot.Bottom - plot.Height * V.Clamp(v / peak, 0, 1.05f) / 1.05f)).ToArray();
+                    if (pts.Length > 1) using (var pen = new Pen(color, 2 * k) { LineJoin = LineJoin.Round }) g.DrawLines(pen, pts);
+                }
+                using (var red = new Pen(Color.FromArgb(200, 255, 70, 60), 1.5f * k)) g.DrawLine(red, X(redline), plot.Y, X(redline), plot.Bottom);
+                if (d != null && d.Rpm > 0)
+                    using (var pen = new Pen(Ink, 2 * k)) using (var b = new SolidBrush(Ink))
+                    {
+                        float x = X(Math.Min(d.Rpm, top));
+                        g.DrawLine(pen, x, plot.Y, x, plot.Bottom);
+                        g.DrawString($"{d.Rpm:0}", f, b, Math.Min(x + 3 * k, plot.Right - 34 * k), plot.Y + 2 * k);
+                    }
+            }
         }
 
         void Tree(Graphics g, float x, float y, float k)
