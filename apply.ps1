@@ -139,8 +139,9 @@ $patches = @{
       ,@('<property id="MaxMultiplier" value="5.0"/>', "<property id=""MaxMultiplier"" value=""$(Num $s.MaxSkillMultiplier)""/>$chainTime")
     )
     'AI/Densities.xml' = ScaleTraffic $freeRoam
-    # more traffic needs a higher cap on live traffic cars (18 by default)
-    'AI/CarLoadingSettings.xml' = ,@('MaxActiveTraffic="18"', "MaxActiveTraffic=""$([Math]::Max(18, [int][Math]::Round(18 * $freeRoam)))""")
+    # more traffic needs a higher cap on live traffic cars (18 by default); scaled from the file's own value, since a
+    # traffic mod may have changed it before the backup was made (an exact "18" then failed with "pattern not found")
+    'AI/CarLoadingSettings.xml' = ,@('MaxActiveTraffic="(\d+)"', { param($m) 'MaxActiveTraffic="{0}"' -f [Math]::Max([int]$m.Groups[1].Value, [int][Math]::Round([int]$m.Groups[1].Value * $freeRoam)) }.GetNewClosure())
   }
 }
 # cameras: set outright, so a value a camera mod already changed is fine too; a stock setting leaves that mod's value alone
